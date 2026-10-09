@@ -1,7 +1,9 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { closeAllSessions } from './agents/sessions'
 import { registerIpcHandlers } from './ipc'
+import { killAllTerminals } from './terminals/terminals'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -47,6 +49,11 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('will-quit', () => {
+  closeAllSessions()
+  killAllTerminals()
 })
 
 app.on('window-all-closed', () => {

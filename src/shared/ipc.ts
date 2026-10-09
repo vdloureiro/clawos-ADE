@@ -15,6 +15,8 @@ export interface AppInfo {
 export interface InvokeChannels {
   'app:info': { args: []; result: AppInfo }
   'dialog:pickFolder': { args: []; result: string | null }
+  /** Abre um arquivo no app padrão do sistema. */
+  'shell:openPath': { args: [path: string]; result: void }
 
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }
 
@@ -27,10 +29,9 @@ export interface InvokeChannels {
   }
   'session:close': { args: [sessionId: string]; result: void }
 
-  'terminal:create': {
-    args: [options: { command: string; args: string[]; cwd?: string; cols: number; rows: number }]
-    result: string
-  }
+  /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
+  'agents:login': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
+
   'terminal:input': { args: [terminalId: string, data: string]; result: void }
   'terminal:resize': { args: [terminalId: string, cols: number, rows: number]; result: void }
   'terminal:kill': { args: [terminalId: string]; result: void }

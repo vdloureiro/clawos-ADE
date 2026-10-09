@@ -10,8 +10,12 @@ files:
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.json,.editorconfig,.nvmrc}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
+  # O Clawos usa o CLI `claude` do usuário; não redistribuímos o binário nativo do SDK.
+  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
 asarUnpack:
   - resources/**
+  # Adaptadores ACP rodam como processos Node separados, fora do asar.
+  - node_modules/@agentclientprotocol/**
 mac:
   category: public.app-category.developer-tools
   target:

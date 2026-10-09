@@ -7,8 +7,17 @@ const shared = { '@shared': resolve('src/shared') }
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // O SDK do ACP é só ESM; embutimos no bundle em vez de dar require() em runtime.
+    plugins: [externalizeDepsPlugin({ exclude: ['@agentclientprotocol/sdk'] })],
     resolve: { alias: shared },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          agentHost: resolve('src/main/agents/agentHost.ts'),
+        },
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],

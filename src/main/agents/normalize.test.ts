@@ -63,7 +63,9 @@ describe('normalizeUpdate', () => {
       toolCallId: 'toolu_1',
       title: 'Write hello.ts',
       locations: [{ path: '/w/hello.ts' }],
-      content: [{ type: 'diff', path: '/w/hello.ts', oldText: null, newText: "console.log('olá');\n" }],
+      content: [
+        { type: 'diff', path: '/w/hello.ts', oldText: null, newText: "console.log('olá');\n" },
+      ],
     })
     expect(events).toEqual([
       {
@@ -72,7 +74,9 @@ describe('normalizeUpdate', () => {
         patch: {
           title: 'Write hello.ts',
           locations: ['/w/hello.ts'],
-          content: [{ type: 'diff', path: '/w/hello.ts', oldText: null, newText: "console.log('olá');\n" }],
+          content: [
+            { type: 'diff', path: '/w/hello.ts', oldText: null, newText: "console.log('olá');\n" },
+          ],
         },
       },
     ])
@@ -116,7 +120,10 @@ describe('normalizeUpdate', () => {
         entries: [{ content: 'Criar hello.ts', status: 'pending', priority: 'high' }],
       }),
     ).toEqual([
-      { type: 'plan', entries: [{ content: 'Criar hello.ts', status: 'pending', priority: 'high' }] },
+      {
+        type: 'plan',
+        entries: [{ content: 'Criar hello.ts', status: 'pending', priority: 'high' }],
+      },
     ])
     expect(
       normalizeUpdate({ sessionUpdate: 'usage_update', used: 1, size: 2 } as SessionUpdate),

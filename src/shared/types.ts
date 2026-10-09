@@ -30,12 +30,7 @@ export interface AgentStatus {
 // ---------------------------------------------------------------------------
 
 export type SessionStatus =
-  | 'starting'
-  | 'ready'
-  | 'working'
-  | 'awaiting_permission'
-  | 'error'
-  | 'closed'
+  'starting' | 'ready' | 'working' | 'awaiting_permission' | 'error' | 'closed'
 
 export type ToolKind =
   | 'read'

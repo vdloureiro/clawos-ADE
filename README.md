@@ -2,7 +2,7 @@
 
 App desktop open source (MIT) para trabalhar com vários agentes de código de IA — Claude Code, Codex, Gemini e outros — em vários projetos, com uma interface de **chat limpo** e **vários agentes em paralelo** em painéis organizáveis.
 
-> Status: em desenvolvimento inicial (M0 — fundação). Ainda não faz nada útil.
+> Status: em desenvolvimento (M1 — chat com o Claude numa pasta). Ainda não é um release.
 
 ## Princípios
 
@@ -10,6 +10,13 @@ App desktop open source (MIT) para trabalhar com vários agentes de código de I
 - **Clawos nunca lida com suas credenciais de LLM.** Você faz login nos CLIs oficiais (`claude`, `codex`, `gemini`) com a sua própria assinatura; o Clawos só detecta se estão instalados e logados.
 - **Chat estruturado, não terminal.** As conversas usam o [Agent Client Protocol (ACP)](https://agentclientprotocol.com).
 - **Isolamento por projeto.** Cada projeto tem suas próprias skills, MCPs e instruções em `.clawos/project.yaml`.
+
+## Requisitos para usar
+
+- **Claude:** o [CLI oficial](https://code.claude.com/docs/en/setup) instalado e logado (`claude auth login`). O Clawos detecta automaticamente e oferece um botão **Entrar** que roda esse comando. Ele usa a mesma conta que você usa no terminal ou no VS Code.
+- Codex e Gemini chegam no M4.
+
+> **Sobre contas claude.ai:** o Clawos conversa com o Claude através do adaptador ACP oficial e do seu CLI, com o login que você mesmo fez. A Anthropic não permite que produtos de terceiros _ofereçam_ login claude.ai sem aprovação prévia ([Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview)); por isso o Clawos nunca implementa login próprio. Use conforme os termos da sua conta.
 
 ## Desenvolvimento
 

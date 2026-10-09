@@ -5,12 +5,7 @@ import type {
   ToolCallContent,
   ToolCallLocation,
 } from '@agentclientprotocol/sdk'
-import type {
-  PermissionOptionView,
-  SessionEvent,
-  ToolCallView,
-  ToolContent,
-} from '@shared/types'
+import type { PermissionOptionView, SessionEvent, ToolCallView, ToolContent } from '@shared/types'
 
 /**
  * Traduz `session/update` do ACP para os eventos normalizados que a UI entende.

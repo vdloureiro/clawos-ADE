@@ -66,6 +66,12 @@ Alternativa: rodar via `npx` com versão fixada, como faz o [registro ACP](#6-re
 
 ---
 
+## ✅ Decisões tomadas (2026-10-09)
+
+- **D1:** o Claude roda com o login que o usuário já fez no Claude Code (conta claude.ai ou API), exatamente como a extensão do VS Code. O Clawos não tem fluxo de login próprio: o botão **Entrar** roda `claude auth login` num terminal. A restrição da Anthropic sobre produtos de terceiros continua valendo para **distribuição pública**; revisitar antes do release (M6).
+- **D2:** Codex com mescla de MCPs globais e aviso na UI (M4).
+- **D3:** só os adaptadores JS vão embutidos, apontando para o CLI do usuário (`CLAUDE_CODE_EXECUTABLE`). O binário nativo opcional do Claude Agent SDK fica fora do pacote (`electron-builder.yml`).
+
 ## 1. SDK TypeScript do ACP
 
 - Pacote: **`@agentclientprotocol/sdk` 1.8.0** ([repo](https://github.com/agentclientprotocol/typescript-sdk)). O pacote `@zed-industries/agent-client-protocol` está abandonado (parou na 0.4.5).
