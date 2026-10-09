@@ -110,8 +110,13 @@ export interface SessionInfo {
   title: string
 }
 
+export type SessionMode = 'shared' | 'worktree'
+
 /** Linha da lista de conversas de um projeto. `live` = processo do agente rodando. */
 export interface SessionSummary extends SessionInfo {
+  mode: SessionMode
+  /** Branch de origem da worktree (modo `worktree`). */
+  baseBranch: string | null
   /** Branch git da pasta da sessão, quando houver. */
   branch: string | null
   status: SessionStatus
@@ -151,4 +156,27 @@ export interface LayoutPreset {
   name: string
   /** `SerializedDockview` em JSON. */
   json: string
+}
+
+// ---------------------------------------------------------------------------
+// Worktrees
+
+export interface WorktreeFile {
+  path: string
+  status: 'A' | 'M' | 'D'
+  oldText: string | null
+  newText: string | null
+  binary: boolean
+}
+
+export interface WorktreeDiff {
+  branch: string
+  baseBranch: string
+  files: WorktreeFile[]
+}
+
+export interface MergeResult {
+  ok: boolean
+  message: string
+  conflicts: string[]
 }

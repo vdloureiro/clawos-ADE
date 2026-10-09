@@ -2,7 +2,7 @@
 
 App desktop open source (MIT) para trabalhar com vários agentes de código de IA — Claude Code, Codex, Gemini e outros — em vários projetos, com uma interface de **chat limpo** e **vários agentes em paralelo** em painéis organizáveis.
 
-> Status: em desenvolvimento (M4 — Claude, Codex e Gemini). Ainda não é um release.
+> Status: em desenvolvimento (M5 — worktrees isoladas por sessão). Ainda não é um release.
 
 ## Princípios
 
@@ -44,6 +44,17 @@ agents:
 - As sessões de um projeto enxergam **somente** os MCPs e skills dele. MCPs globais do usuário nunca são carregados.
 - `${secret:nome}` vem dos segredos do projeto, guardados com a criptografia do sistema (`safeStorage`). Nunca vão para o YAML.
 - `inheritUserConfig: true` também carrega a sua configuração global do Claude (`~/.claude`: CLAUDE.md, skills, permissões).
+
+## Worktrees isoladas
+
+Ao criar um agente (**+ Agente**), escolha **Worktree isolada** para que ele trabalhe numa branch própria (`clawos/<id>`), num diretório fora do seu repositório, criado a partir da branch atual. Vários agentes podem mexer no mesmo arquivo sem se atrapalhar. No painel:
+
+- **Diff** — alterações da worktree em relação à base (inclusive arquivos novos);
+- **Editor** — abre a worktree no VS Code/Cursor (ou no Finder);
+- **Mesclar** — commita o que estiver pendente e mescla na branch base (o projeto precisa estar nessa branch); em caso de conflito, nada é alterado e os arquivos são listados;
+- **Descartar** — remove a worktree, a branch e a conversa.
+
+A worktree parte do último commit: alterações não commitadas na pasta do projeto não aparecem nela. Sessões em **mesma pasta** recebem um aviso quando outra sessão da mesma pasta edita o mesmo arquivo.
 
 ## Adicionando um agente compatível com ACP
 

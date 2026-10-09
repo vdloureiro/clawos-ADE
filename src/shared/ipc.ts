@@ -8,9 +8,12 @@ import type {
   AgentId,
   AgentStatus,
   LayoutPreset,
+  MergeResult,
   Project,
   SessionEvent,
+  SessionMode,
   SessionSummary,
+  WorktreeDiff,
 } from './types'
 
 export interface AppInfo {
@@ -71,7 +74,10 @@ export interface InvokeChannels {
 
   'sessions:list': { args: [projectId: string]; result: SessionSummary[] }
   'sessions:listAll': { args: []; result: SessionSummary[] }
-  'session:create': { args: [projectId: string, agentId?: AgentId]; result: SessionSummary }
+  'session:create': {
+    args: [projectId: string, agentId?: AgentId, mode?: SessionMode]
+    result: SessionSummary
+  }
   'session:open': { args: [sessionId: string]; result: ChatState }
   'session:prompt': {
     args: [sessionId: string, text: string, attachments?: string[]]
@@ -85,6 +91,11 @@ export interface InvokeChannels {
   'session:rename': { args: [sessionId: string, title: string]; result: void }
   'session:stop': { args: [sessionId: string]; result: void }
   'session:delete': { args: [sessionId: string]; result: void }
+
+  'worktree:diff': { args: [sessionId: string]; result: WorktreeDiff }
+  'worktree:merge': { args: [sessionId: string]; result: MergeResult }
+  /** Abre a pasta da worktree no editor (VS Code/Cursor se instalados) ou no Finder. */
+  'worktree:openEditor': { args: [sessionId: string]; result: void }
 
   'terminal:input': { args: [terminalId: string, data: string]; result: void }
   'terminal:resize': { args: [terminalId: string, cols: number, rows: number]; result: void }

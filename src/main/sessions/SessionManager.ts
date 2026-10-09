@@ -2,13 +2,23 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { applyEvent, createChatState, type ChatState } from '@shared/chat'
-import type { AgentId, SessionEvent, SessionInfo, SessionSummary } from '@shared/types'
+import type {
+  AgentId,
+  MergeResult,
+  SessionEvent,
+  SessionInfo,
+  SessionMode,
+  SessionSummary,
+  WorktreeDiff,
+} from '@shared/types'
 import { AgentSession } from '../agents/AgentSession'
 import type { GlobalMcp } from '../agents/registry'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
 import { materialize } from '../compiler/materialize'
 import type { ProjectManager } from '../projects/ProjectManager'
 import type { SecretStore } from '../secrets/SecretStore'
+import type { WorktreeManager } from '../worktrees/WorktreeManager'
+import { EditTracker } from './EditTracker'
 import type { SessionRepo } from './SessionRepo'
 
 interface LiveSession {
@@ -29,6 +39,7 @@ export interface SessionManagerDeps {
   notify: (session: SessionInfo, kind: 'finished' | 'permission', detail: string) => void
   /** Branch git atual da pasta, ou null. */
   branchOf: (cwd: string) => Promise<string | null>
+  worktrees: WorktreeManager
   /** MCPs globais do usuário no agente (o compilador os desliga na sessão). */
   globalMcps: (agentId: AgentId) => Promise<GlobalMcp[]>
 }
@@ -42,6 +53,7 @@ const NEW_TITLE = 'Nova conversa'
  */
 export class SessionManager {
   private readonly live = new Map<string, LiveSession>()
+  private readonly edits = new EditTracker()
 
   constructor(private readonly deps: SessionManagerDeps) {}
 
@@ -53,14 +65,21 @@ export class SessionManager {
     return this.deps.repo.listAll().map(({ summary }) => this.withLiveStatus(summary))
   }
 
-  create(projectId: string, agentId?: AgentId): SessionSummary {
+  async create(
+    projectId: string,
+    agentId?: AgentId,
+    mode: SessionMode = 'shared',
+  ): Promise<SessionSummary> {
     const project = this.deps.projects.get(projectId)
     const id = randomUUID()
+    const worktree =
+      mode === 'worktree' ? await this.deps.worktrees.create(project.path, id) : undefined
     this.deps.repo.create({
       id,
       projectId,
       agentId: agentId ?? project.defaultAgent,
       title: NEW_TITLE,
+      worktree,
     })
     this.deps.projects.touch(projectId)
     const { summary } = this.deps.repo.get(id)
@@ -116,19 +135,50 @@ export class SessionManager {
     live.agent?.close()
     this.flush(id)
     this.live.delete(id)
+    this.edits.forget(id)
     this.changed(live.chat.info.projectId)
   }
 
-  delete(id: string): void {
-    const { summary } = this.deps.repo.get(id)
+  /** Apaga a conversa; numa sessão em worktree, descarta também a worktree e a branch. */
+  async delete(id: string): Promise<void> {
+    const stored = this.deps.repo.get(id)
     const live = this.live.get(id)
     if (live) {
       live.agent?.close()
       if (live.saveTimer) clearTimeout(live.saveTimer)
       this.live.delete(id)
     }
+    this.edits.forget(id)
+    if (stored.worktree) await this.deps.worktrees.discard(stored.projectPath, stored.worktree)
     this.deps.repo.delete(id)
-    this.changed(summary.projectId)
+    this.changed(stored.summary.projectId)
+  }
+
+  // -------------------------------------------------------------------------
+  // Worktrees
+
+  async worktreeDiff(id: string): Promise<WorktreeDiff> {
+    return this.deps.worktrees.diff(this.requireWorktree(id).worktree)
+  }
+
+  async worktreeMerge(id: string): Promise<MergeResult> {
+    const { worktree, projectPath, summary } = this.requireWorktree(id)
+    const title = this.live.get(id)?.chat.info.title ?? summary.title
+    const result = await this.deps.worktrees.merge(projectPath, worktree, title)
+    const conflicts =
+      result.conflicts.length > 0 ? ` Arquivos em conflito: ${result.conflicts.join(', ')}.` : ''
+    this.handleEvent(id, { type: 'notice', text: `${result.message}${conflicts}` })
+    return result
+  }
+
+  worktreePath(id: string): string {
+    return this.requireWorktree(id).worktree.path
+  }
+
+  private requireWorktree(id: string) {
+    const stored = this.deps.repo.get(id)
+    if (!stored.worktree) throw new Error('Esta sessão não usa worktree isolada.')
+    return { ...stored, worktree: stored.worktree }
   }
 
   activeCount(): number {
@@ -211,6 +261,7 @@ export class SessionManager {
     if (!live) return
     live.chat = applyEvent(live.chat, event)
     this.deps.send('session:event', { sessionId: id, event })
+    this.trackEdits(id, live, event)
 
     if (event.type === 'status_change') {
       this.deps.repo.update(id, { status: event.status })
@@ -231,6 +282,38 @@ export class SessionManager {
       this.flush(id)
     } else {
       this.scheduleSave(id)
+    }
+  }
+
+  /** Avisa quando outra sessão na mesma pasta já editou o arquivo que esta acabou de editar. */
+  private trackEdits(id: string, live: LiveSession, event: SessionEvent): void {
+    const toolCallId =
+      event.type === 'tool_call_update'
+        ? event.toolCallId
+        : event.type === 'tool_call_start'
+          ? event.toolCall.id
+          : null
+    if (!toolCallId) return
+    const item = live.chat.items.find((i) => i.kind === 'tool' && i.id === toolCallId)
+    if (item?.kind !== 'tool') return
+    const { toolCall } = item
+    if (toolCall.status !== 'completed' || !['edit', 'delete', 'move'].includes(toolCall.kind))
+      return
+    if (this.deps.repo.get(id).worktree) return // worktree isolada: sem risco
+
+    const files = new Set([
+      ...toolCall.locations,
+      ...toolCall.content.flatMap((c) => (c.type === 'diff' ? [c.path] : [])),
+    ])
+    for (const file of files) {
+      for (const otherId of this.edits.record(file, id)) {
+        const other = this.live.get(otherId)
+        if (!other || other.chat.info.cwd !== live.chat.info.cwd) continue
+        const text = (title: string) =>
+          `Atenção: ${file} também foi editado pela sessão "${title}" nesta mesma pasta. Para trabalho em paralelo no mesmo código, prefira uma worktree isolada.`
+        this.handleEvent(id, { type: 'notice', text: text(other.chat.info.title) })
+        this.handleEvent(otherId, { type: 'notice', text: text(live.chat.info.title) })
+      }
     }
   }
 

@@ -168,9 +168,9 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
               </button>
               <button
                 type="button"
-                disabled
-                title="Chega no M5"
-                className="flex-1 rounded border px-2 py-1 text-xs opacity-40"
+                title="Branch e pasta próprias: o agente não interfere nas outras sessões"
+                className={`flex-1 rounded border px-2 py-1 text-xs ${mode === 'worktree' ? 'bg-accent' : ''}`}
+                onClick={() => setMode('worktree')}
               >
                 Worktree isolada
               </button>
@@ -187,7 +187,7 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
                     className={item}
                     disabled={!ready}
                     onClick={() => {
-                      void newSessionInDock(project.id, { agentId: agent.id })
+                      void newSessionInDock(project.id, { agentId: agent.id, mode })
                       close()
                     }}
                   >

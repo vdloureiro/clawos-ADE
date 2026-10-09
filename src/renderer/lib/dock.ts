@@ -1,5 +1,5 @@
 import type { DockviewApi } from 'dockview-react'
-import type { AgentId } from '@shared/types'
+import type { AgentId, SessionMode } from '@shared/types'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 import { chatPanelState, remapLayout } from './layout'
@@ -64,9 +64,15 @@ export async function openInDock(
 /** Cria uma sessão nova e abre num painel (no grupo indicado ou no ativo). */
 export async function newSessionInDock(
   projectId: string,
-  options: { agentId?: AgentId; groupId?: string } = {},
+  options: { agentId?: AgentId; groupId?: string; mode?: SessionMode } = {},
 ) {
-  const summary = await useSessionsStore.getState().create(projectId, options.agentId)
+  let summary
+  try {
+    summary = await useSessionsStore.getState().create(projectId, options.agentId, options.mode)
+  } catch (error) {
+    alert(cleanIpcError(error))
+    return
+  }
   await openInDock(projectId, summary.id, options.groupId)
 }
 
@@ -140,4 +146,12 @@ export function applySavedPreset(projectId: string, json: string): void {
 export function currentLayoutJson(projectId: string): string | null {
   const api = apis.get(projectId)
   return api ? JSON.stringify(api.toJSON()) : null
+}
+
+/** Remove o prefixo que o Electron adiciona a erros de IPC. */
+export function cleanIpcError(error: unknown): string {
+  return String((error as Error)?.message ?? error).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    '',
+  )
 }

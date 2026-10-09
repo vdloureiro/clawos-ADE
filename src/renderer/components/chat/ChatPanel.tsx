@@ -12,6 +12,7 @@ import { Markdown } from './Markdown'
 import { PermissionCard } from './PermissionCard'
 import { PlanView } from './PlanView'
 import { ThoughtBlock } from './ThoughtBlock'
+import { WorktreeBar } from './WorktreeBar'
 import { relativize, ToolCallCard } from './ToolCallCard'
 
 const STATUS: Record<SessionStatus, { label: string; className: string }> = {
@@ -26,9 +27,10 @@ const STATUS: Record<SessionStatus, { label: string; className: string }> = {
 export function ChatPanel({ sessionId }: { sessionId: string }) {
   const chat = useSessionsStore((s) => s.chats[sessionId])
   const rename = useSessionsStore((s) => s.rename)
-  const branch = useSessionsStore(
-    (s) => chat && s.summaries[chat.info.projectId]?.find((x) => x.id === sessionId)?.branch,
+  const summary = useSessionsStore((s) =>
+    chat ? s.summaries[chat.info.projectId]?.find((x) => x.id === sessionId) : undefined,
   )
+  const branch = summary?.mode === 'worktree' ? null : summary?.branch
   const [editingTitle, setEditingTitle] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
@@ -119,6 +121,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           </Button>
         )}
       </header>
+      {summary?.mode === 'worktree' && <WorktreeBar summary={summary} busy={working} />}
 
       <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">

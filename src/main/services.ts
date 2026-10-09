@@ -9,6 +9,7 @@ import { ProjectManager } from './projects/ProjectManager'
 import { SecretStore } from './secrets/SecretStore'
 import { SessionManager } from './sessions/SessionManager'
 import { SessionRepo } from './sessions/SessionRepo'
+import { WorktreeManager } from './worktrees/WorktreeManager'
 
 /** Instâncias únicas do processo main, criadas após `app.whenReady()`. */
 export interface Services {
@@ -65,6 +66,7 @@ export function initServices(): Services {
     notify,
     branchOf: currentBranch,
     globalMcps,
+    worktrees: new WorktreeManager(join(app.getPath('userData'), 'worktrees')),
   })
   services = { projects, secrets, sessions, layouts: new LayoutRepo(db) }
   return services

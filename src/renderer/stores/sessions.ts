@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { applyEvent, type ChatState } from '@shared/chat'
-import type { AgentId, SessionEvent, SessionSummary } from '@shared/types'
+import type { AgentId, SessionEvent, SessionMode, SessionSummary } from '@shared/types'
 
 interface SessionsState {
   /** Chats carregados (abertos ao menos uma vez nesta execução). */
@@ -12,7 +12,7 @@ interface SessionsState {
 
   loadAll: () => Promise<void>
   loadProject: (projectId: string) => Promise<void>
-  create: (projectId: string, agentId?: AgentId) => Promise<SessionSummary>
+  create: (projectId: string, agentId?: AgentId, mode?: SessionMode) => Promise<SessionSummary>
   /** Garante o chat carregado (retomando o agente se estiver encerrado). */
   load: (sessionId: string) => Promise<void>
   apply: (sessionId: string, event: SessionEvent) => void
@@ -48,8 +48,8 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     })
   },
 
-  create: async (projectId, agentId) => {
-    const summary = await window.clawos.invoke('session:create', projectId, agentId)
+  create: async (projectId, agentId, mode) => {
+    const summary = await window.clawos.invoke('session:create', projectId, agentId, mode)
     set((s) => ({
       summaries: { ...s.summaries, [projectId]: [summary, ...(s.summaries[projectId] ?? [])] },
     }))

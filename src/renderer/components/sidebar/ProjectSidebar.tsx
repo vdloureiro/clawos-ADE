@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import {
   FolderPlus,
+  GitBranch,
   MessageSquarePlus,
   MoreHorizontal,
   Search,
@@ -301,6 +302,9 @@ function SessionList({ project, sessions }: { project: Project; sessions: Sessio
               session.live ? STATUS_DOT[session.status] : 'bg-transparent',
             )}
           />
+          {session.mode === 'worktree' && (
+            <GitBranch className="size-3 shrink-0 opacity-60" aria-label="Worktree isolada" />
+          )}
           <span className="min-w-0 flex-1 truncate">{session.title}</span>
           <button
             type="button"
@@ -308,7 +312,11 @@ function SessionList({ project, sessions }: { project: Project; sessions: Sessio
             title="Apagar conversa"
             onClick={(e) => {
               e.stopPropagation()
-              if (confirm(`Apagar a conversa "${session.title}"?`)) {
+              const extra =
+                session.mode === 'worktree'
+                  ? ' A worktree e as alterações não mescladas também serão descartadas.'
+                  : ''
+              if (confirm(`Apagar a conversa "${session.title}"?${extra}`)) {
                 removeSessionPanel(project.id, session.id)
                 void remove(session.id, project.id)
               }

@@ -1,8 +1,9 @@
+import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
 import { detectAll, resolveCli } from '../agents/detect'
 import { getAgent } from '../agents/registry'
-import { getShellEnv } from '../agents/shellEnv'
+import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
 import { listProjectFiles } from '../projects/files'
@@ -110,7 +111,7 @@ export function registerIpcHandlers(): void {
   // Sessões -----------------------------------------------------------------
   handle('sessions:list', (projectId) => sessions.list(projectId))
   handle('sessions:listAll', () => sessions.listAll())
-  handle('session:create', (projectId, agentId) => sessions.create(projectId, agentId))
+  handle('session:create', (projectId, agentId, mode) => sessions.create(projectId, agentId, mode))
   handle('session:open', (id) => sessions.open(id))
   // Não aguardamos o turno inteiro: o progresso chega por `session:event`.
   handle('session:prompt', (id, text, attachments) => sessions.prompt(id, text, attachments))
@@ -121,6 +122,22 @@ export function registerIpcHandlers(): void {
   handle('session:rename', (id, title) => sessions.rename(id, title))
   handle('session:stop', (id) => sessions.stop(id))
   handle('session:delete', (id) => sessions.delete(id))
+
+  // Worktrees ---------------------------------------------------------------
+  handle('worktree:diff', (id) => sessions.worktreeDiff(id))
+  handle('worktree:merge', (id) => sessions.worktreeMerge(id))
+  handle('worktree:openEditor', async (id) => {
+    const path = sessions.worktreePath(id)
+    for (const editor of ['code', 'cursor']) {
+      const bin = await which(editor)
+      if (bin) {
+        spawn(bin, [path], { detached: true, stdio: 'ignore', env: await getShellEnv() }).unref()
+        return
+      }
+    }
+    const error = await shell.openPath(path)
+    if (error) throw new Error(error)
+  })
 
   // Terminais ---------------------------------------------------------------
   handle('terminal:input', (id, data) => writeTerminal(id, data))
