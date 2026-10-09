@@ -5,7 +5,7 @@ import type {
   SessionInfo,
   SessionStatus,
   ToolCallView,
-} from '@shared/types'
+} from './types'
 
 export type ChatItem =
   | { kind: 'user'; id: string; text: string }

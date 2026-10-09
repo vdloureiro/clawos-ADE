@@ -1,48 +1,117 @@
 import { create } from 'zustand'
-import type { AgentId, SessionEvent } from '@shared/types'
-import { applyEvent, createChatState, type ChatState } from '@/lib/chat'
+import { applyEvent, type ChatState } from '@shared/chat'
+import type { AgentId, SessionEvent, SessionSummary } from '@shared/types'
 
 interface SessionsState {
-  sessions: Record<string, ChatState>
-  create: (agentId: AgentId, cwd: string) => Promise<string>
+  /** Chats carregados (abertos ao menos uma vez nesta execução). */
+  chats: Record<string, ChatState>
+  /** Conversas por projeto (inclui encerradas, do histórico). */
+  summaries: Record<string, SessionSummary[]>
+  /** Conversa em foco em cada projeto. */
+  activeByProject: Record<string, string | null>
+
+  loadAll: () => Promise<void>
+  loadProject: (projectId: string) => Promise<void>
+  create: (projectId: string, agentId?: AgentId) => Promise<string>
+  open: (sessionId: string, projectId: string) => Promise<void>
   apply: (sessionId: string, event: SessionEvent) => void
-  close: (sessionId: string) => Promise<void>
+  rename: (sessionId: string, title: string) => Promise<void>
+  remove: (sessionId: string, projectId: string) => Promise<void>
+  setActive: (projectId: string, sessionId: string | null) => void
 }
 
-export const useSessionsStore = create<SessionsState>((set) => ({
-  sessions: {},
+export const useSessionsStore = create<SessionsState>((set, get) => ({
+  chats: {},
+  summaries: {},
+  activeByProject: {},
 
-  create: async (agentId, cwd) => {
-    const info = await window.clawos.invoke('session:create', agentId, cwd)
+  loadAll: async () => {
+    const all = await window.clawos.invoke('sessions:listAll')
+    const summaries: Record<string, SessionSummary[]> = {}
+    for (const s of all) (summaries[s.projectId] ??= []).push(s)
+    set({ summaries })
+  },
+
+  loadProject: async (projectId) => {
+    const list = await window.clawos.invoke('sessions:list', projectId)
     set((s) => {
-      // Eventos podem ter chegado antes da resposta do invoke.
-      const existing = s.sessions[info.id]
-      const state = existing ? { ...existing, info } : createChatState(info)
-      return { sessions: { ...s.sessions, [info.id]: state } }
+      // Títulos mudam no main (primeira mensagem, renomear); reflete nos chats abertos.
+      const chats = { ...s.chats }
+      for (const summary of list) {
+        const chat = chats[summary.id]
+        if (chat && chat.info.title !== summary.title) {
+          chats[summary.id] = { ...chat, info: { ...chat.info, title: summary.title } }
+        }
+      }
+      return { chats, summaries: { ...s.summaries, [projectId]: list } }
     })
-    return info.id
+  },
+
+  create: async (projectId, agentId) => {
+    const summary = await window.clawos.invoke('session:create', projectId, agentId)
+    await get().open(summary.id, projectId)
+    return summary.id
+  },
+
+  open: async (sessionId, projectId) => {
+    get().setActive(projectId, sessionId)
+    if (get().chats[sessionId]) {
+      // Já carregado; se o processo foi encerrado, reabrir retoma a sessão no main.
+      const summary = get().summaries[projectId]?.find((s) => s.id === sessionId)
+      if (!summary || summary.live) return
+    }
+    const chat = await window.clawos.invoke('session:open', sessionId)
+    set((s) => ({ chats: { ...s.chats, [sessionId]: chat } }))
   },
 
   apply: (sessionId, event) =>
     set((s) => {
-      const current =
-        s.sessions[sessionId] ?? createChatState({ id: sessionId, agentId: 'claude', cwd: '' })
-      return { sessions: { ...s.sessions, [sessionId]: applyEvent(current, event) } }
+      const current = s.chats[sessionId]
+      // Eventos de sessões ainda não abertas na UI são ignorados; o main tem o estado.
+      if (!current) return s
+      return { chats: { ...s.chats, [sessionId]: applyEvent(current, event) } }
     }),
 
-  close: async (sessionId) => {
-    await window.clawos.invoke('session:close', sessionId)
+  rename: async (sessionId, title) => {
+    await window.clawos.invoke('session:rename', sessionId, title)
+  },
+
+  remove: async (sessionId, projectId) => {
+    await window.clawos.invoke('session:delete', sessionId)
     set((s) => {
-      const sessions = { ...s.sessions }
-      delete sessions[sessionId]
-      return { sessions }
+      const chats = { ...s.chats }
+      delete chats[sessionId]
+      const active =
+        s.activeByProject[projectId] === sessionId ? null : s.activeByProject[projectId]
+      return { chats, activeByProject: { ...s.activeByProject, [projectId]: active ?? null } }
     })
   },
+
+  setActive: (projectId, sessionId) =>
+    set((s) => ({ activeByProject: { ...s.activeByProject, [projectId]: sessionId } })),
 }))
 
 /** Liga os eventos do main ao store. Chamado uma vez na inicialização. */
 export function subscribeToSessionEvents(): () => void {
-  return window.clawos.on('session:event', ({ sessionId, event }) =>
+  const offEvent = window.clawos.on('session:event', ({ sessionId, event }) =>
     useSessionsStore.getState().apply(sessionId, event),
   )
+  const offChanged = window.clawos.on('sessions:changed', ({ projectId }) => {
+    void useSessionsStore.getState().loadProject(projectId)
+  })
+  return () => {
+    offEvent()
+    offChanged()
+  }
+}
+
+export type ProjectActivity = 'working' | 'awaiting' | 'error' | null
+
+/** Indicador da sidebar: ◐ aguardando aprovação > ● trabalhando > ! erro. */
+export function projectActivity(summaries: SessionSummary[] | undefined): ProjectActivity {
+  const live = (summaries ?? []).filter((s) => s.live)
+  if (live.some((s) => s.status === 'awaiting_permission')) return 'awaiting'
+  if (live.some((s) => s.status === 'working')) return 'working'
+  if (live.some((s) => s.status === 'error')) return 'error'
+  return null
 }

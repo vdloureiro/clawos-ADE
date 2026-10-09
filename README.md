@@ -2,7 +2,7 @@
 
 App desktop open source (MIT) para trabalhar com vários agentes de código de IA — Claude Code, Codex, Gemini e outros — em vários projetos, com uma interface de **chat limpo** e **vários agentes em paralelo** em painéis organizáveis.
 
-> Status: em desenvolvimento (M1 — chat com o Claude numa pasta). Ainda não é um release.
+> Status: em desenvolvimento (M2 — projetos com configuração isolada). Ainda não é um release.
 
 ## Princípios
 
@@ -17,6 +17,30 @@ App desktop open source (MIT) para trabalhar com vários agentes de código de I
 - Codex e Gemini chegam no M4.
 
 > **Sobre contas claude.ai:** o Clawos conversa com o Claude através do adaptador ACP oficial e do seu CLI, com o login que você mesmo fez. A Anthropic não permite que produtos de terceiros _ofereçam_ login claude.ai sem aprovação prévia ([Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview)); por isso o Clawos nunca implementa login próprio. Use conforme os termos da sua conta.
+
+## Configuração por projeto
+
+Cada projeto pode ter um `.clawos/project.yaml` (editável pela tela de configurações do projeto):
+
+```yaml
+name: DraLab
+defaultAgent: claude
+instructions: ./CLAUDE.md # outro arquivo é anexado às instruções do agente
+skills:
+  - ./.clawos/skills/revisao-pr # pastas com SKILL.md
+mcpServers:
+  supabase:
+    command: npx
+    args: ['-y', '@supabase/mcp-server-supabase', '--project-ref=xxxx']
+    env:
+      SUPABASE_ACCESS_TOKEN: '${secret:supabase_token}' # resolvido do cofre do sistema
+agents:
+  claude: { enabled: true, inheritUserConfig: false }
+```
+
+- As sessões de um projeto enxergam **somente** os MCPs e skills dele. MCPs globais do usuário nunca são carregados.
+- `${secret:nome}` vem dos segredos do projeto, guardados com a criptografia do sistema (`safeStorage`). Nunca vão para o YAML.
+- `inheritUserConfig: true` também carrega a sua configuração global do Claude (`~/.claude`: CLAUDE.md, skills, permissões).
 
 ## Desenvolvimento
 

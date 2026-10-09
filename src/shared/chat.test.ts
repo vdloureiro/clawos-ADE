@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '@shared/types'
 import { applyEvent, createChatState, type ChatState } from './chat'
 
-const info = { id: 's1', agentId: 'claude' as const, cwd: '/w' }
+const info = {
+  id: 's1',
+  projectId: 'p1',
+  agentId: 'claude' as const,
+  cwd: '/w',
+  title: 'Nova conversa',
+}
 
 function run(...events: SessionEvent[]): ChatState {
   return events.reduce(applyEvent, createChatState(info))

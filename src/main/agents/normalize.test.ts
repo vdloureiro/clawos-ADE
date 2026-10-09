@@ -138,3 +138,17 @@ describe('normalizePermissionOptions', () => {
     ).toEqual([{ id: 'allow', name: 'Allow', kind: 'allow_once' }])
   })
 })
+
+describe('describeError', () => {
+  it('usa os detalhes do erro ACP em vez de "Internal error"', async () => {
+    const { describeError } = await import('./AgentSession')
+    expect(
+      describeError({
+        code: -32603,
+        message: 'Internal error',
+        data: { details: "unknown option '--x'" },
+      }),
+    ).toBe("unknown option '--x'")
+    expect(describeError(new Error('falhou'))).toBe('falhou')
+  })
+})

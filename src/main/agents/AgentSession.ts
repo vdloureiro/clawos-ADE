@@ -4,7 +4,8 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { Readable, Writable } from 'node:stream'
 import * as acp from '@agentclientprotocol/sdk'
-import type { AgentId, SessionEvent, SessionInfo, SessionStatus } from '@shared/types'
+import type { AgentId, SessionEvent, SessionStatus } from '@shared/types'
+import type { CompiledSession } from '../compiler/ConfigCompiler'
 import { resolveCli } from './detect'
 import { normalizePermissionOptions, normalizeUpdate } from './normalize'
 import { getAgent } from './registry'
@@ -19,6 +20,19 @@ function resolveAdapter(module: string): string {
 
 type PermissionResolver = (optionId: string | null) => void
 
+export interface AgentSessionOptions {
+  id: string
+  agentId: AgentId
+  cwd: string
+  /** Configuração do projeto já traduzida para este agente. */
+  compiled: CompiledSession
+  /** Id da sessão ACP anterior, para retomar a conversa (`session/resume`). */
+  resumeAcpSessionId: string | null
+  emit: (event: SessionEvent) => void
+  /** Chamado quando o agente atribui o id da sessão ACP (para persistir). */
+  onAcpSessionId: (acpSessionId: string) => void
+}
+
 /**
  * Uma sessão de chat = um processo de agente ACP.
  *
@@ -26,7 +40,10 @@ type PermissionResolver = (optionId: string | null) => void
  * encerramento. Tudo que sai daqui para a UI passa por `emit` como `SessionEvent`.
  */
 export class AgentSession {
-  readonly id = randomUUID()
+  readonly id: string
+  readonly agentId: AgentId
+  readonly cwd: string
+  private readonly emit: (event: SessionEvent) => void
   private process: ChildProcess | null = null
   private connection: acp.ClientConnection | null = null
   private acpSessionId: string | null = null
@@ -35,30 +52,49 @@ export class AgentSession {
   private readonly stderrTail: string[] = []
   private closing = false
 
-  constructor(
-    readonly agentId: AgentId,
-    readonly cwd: string,
-    private readonly emit: (event: SessionEvent) => void,
-  ) {}
-
-  get info(): SessionInfo {
-    return { id: this.id, agentId: this.agentId, cwd: this.cwd }
+  constructor(private readonly options: AgentSessionOptions) {
+    this.id = options.id
+    this.agentId = options.agentId
+    this.cwd = options.cwd
+    this.emit = options.emit
   }
 
   async start(): Promise<void> {
     this.setStatus('starting')
     try {
       const connection = await this.spawnAgent()
-      await connection.agent.request(acp.methods.agent.initialize, {
+      const init = await connection.agent.request(acp.methods.agent.initialize, {
         protocolVersion: acp.PROTOCOL_VERSION,
         clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
         clientInfo: { name: 'clawos', title: 'Clawos', version: '0.0.1' },
       })
-      const session = await connection.agent.request(acp.methods.agent.session.new, {
-        cwd: this.cwd,
-        mcpServers: [],
-      })
-      this.acpSessionId = session.sessionId
+      const { compiled, resumeAcpSessionId } = this.options
+      const canResume = Boolean(init.agentCapabilities?.sessionCapabilities?.resume)
+
+      if (resumeAcpSessionId && canResume) {
+        // Retoma o contexto da conversa sem reenviar o histórico (a UI já o tem do banco).
+        await connection.agent.request(acp.methods.agent.session.resume, {
+          sessionId: resumeAcpSessionId,
+          cwd: this.cwd,
+          mcpServers: compiled.mcpServers,
+          _meta: compiled.meta,
+        })
+        this.acpSessionId = resumeAcpSessionId
+      } else {
+        const session = await connection.agent.request(acp.methods.agent.session.new, {
+          cwd: this.cwd,
+          mcpServers: compiled.mcpServers,
+          _meta: compiled.meta,
+        })
+        this.acpSessionId = session.sessionId
+        this.options.onAcpSessionId(session.sessionId)
+        if (resumeAcpSessionId) {
+          this.emit({
+            type: 'error',
+            message: 'Este agente não suporta retomar conversas; o contexto anterior foi perdido.',
+          })
+        }
+      }
       this.setStatus('ready')
     } catch (error) {
       this.fail(error)
@@ -203,8 +239,17 @@ export class AgentSession {
   }
 }
 
-function describeError(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (error && typeof error === 'object' && 'message' in error) return String(error.message)
+/** Mensagem legível, incluindo o detalhe que o ACP manda em `data` (ex.: stderr do CLI). */
+export function describeError(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const { message, data } = error as { message?: unknown; data?: unknown }
+    const details =
+      data && typeof data === 'object' && 'details' in data
+        ? String((data as { details: unknown }).details)
+        : null
+    if (details)
+      return message && message !== 'Internal error' ? `${String(message)}: ${details}` : details
+    if (message) return String(message)
+  }
   return String(error)
 }

@@ -1,8 +1,9 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { closeAllSessions } from './agents/sessions'
+import { closeDb } from './db'
 import { registerIpcHandlers } from './ipc'
+import { getServices, initServices } from './services'
 import { killAllTerminals } from './terminals/terminals'
 
 function createWindow(): void {
@@ -43,6 +44,7 @@ app.whenReady().then(() => {
 
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
+  initServices()
   registerIpcHandlers()
   createWindow()
 
@@ -51,9 +53,29 @@ app.whenReady().then(() => {
   })
 })
 
+let quitConfirmed = false
+
+// Pergunta antes de sair se houver agentes rodando.
+app.on('before-quit', (event) => {
+  if (quitConfirmed) return
+  const active = getServices().sessions.activeCount()
+  if (active === 0) return
+  const choice = dialog.showMessageBoxSync({
+    type: 'question',
+    buttons: ['Sair', 'Cancelar'],
+    defaultId: 1,
+    cancelId: 1,
+    message: `${active === 1 ? 'Há 1 sessão ativa' : `Há ${active} sessões ativas`}.`,
+    detail: 'Os agentes serão encerrados. O histórico das conversas fica salvo.',
+  })
+  if (choice === 1) event.preventDefault()
+  else quitConfirmed = true
+})
+
 app.on('will-quit', () => {
-  closeAllSessions()
+  getServices().sessions.stopAll()
   killAllTerminals()
+  closeDb()
 })
 
 app.on('window-all-closed', () => {

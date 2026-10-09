@@ -5,6 +5,7 @@
  * bruto de cada agente. A tradução ACP → SessionEvent vive em `main/agents/normalize.ts`.
  */
 export type { AppInfo, ClawosApi } from './ipc'
+export type { ChatItem, ChatState } from './chat'
 
 export type AgentId = 'claude'
 
@@ -100,6 +101,42 @@ export type SessionEvent =
 
 export interface SessionInfo {
   id: string
+  projectId: string
   agentId: AgentId
   cwd: string
+  title: string
 }
+
+/** Linha da lista de conversas de um projeto. `live` = processo do agente rodando. */
+export interface SessionSummary extends SessionInfo {
+  status: SessionStatus
+  live: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+// ---------------------------------------------------------------------------
+// Projetos
+// ---------------------------------------------------------------------------
+
+export interface Project {
+  id: string
+  name: string
+  path: string
+  color: string
+  defaultAgent: AgentId
+  createdAt: number
+  lastOpenedAt: number | null
+  sortOrder: number
+}
+
+export const PROJECT_COLORS = [
+  '#f97316',
+  '#3b82f6',
+  '#22c55e',
+  '#a855f7',
+  '#ec4899',
+  '#eab308',
+  '#14b8a6',
+  '#ef4444',
+] as const

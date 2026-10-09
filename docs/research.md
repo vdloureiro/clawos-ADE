@@ -72,6 +72,15 @@ Alternativa: rodar via `npx` com versão fixada, como faz o [registro ACP](#6-re
 - **D2:** Codex com mescla de MCPs globais e aviso na UI (M4).
 - **D3:** só os adaptadores JS vão embutidos, apontando para o CLI do usuário (`CLAUDE_CODE_EXECUTABLE`). O binário nativo opcional do Claude Agent SDK fica fora do pacote (`electron-builder.yml`).
 
+## 🔬 Verificado na prática no M2 (2026-10-09)
+
+- **Isolamento de MCPs do Claude:** `session/new` com `_meta.claudeCode.options.strictMcpConfig: true` + `settingSources: ['project','local']` → a sessão enxerga **só** os MCPs do projeto (nenhum MCP global, de `.mcp.json` ou conector claude.ai). Provado com dois projetos e MCPs distintos.
+- **Skills via plugin local** (gerado em `<userData>/generated/<sessão>/claude-plugin`, com symlinks para as pastas do projeto): funciona; a skill aparece como `clawos-project:<nome>` e só no projeto dono.
+- **`skipMcpDiscovery` quebra CLIs antigos** (`claude` 2.1.87 não conhece `--plugin-dir-no-mcp`). Não usamos: o plugin gerado não declara MCPs.
+- **`session/resume`** do adaptador do Claude retoma o contexto sem reenviar o histórico; o Clawos mostra o histórico salvo no SQLite.
+- **`.gitignore`:** em vez de editar o `.gitignore` da raiz do projeto, o Clawos cria `.clawos/.gitignore` com `local/` — mesmo efeito, sem tocar em arquivos do usuário.
+- **better-sqlite3 13** carrega no Electron 44 sem rebuild (N-API).
+
 ## 1. SDK TypeScript do ACP
 
 - Pacote: **`@agentclientprotocol/sdk` 1.8.0** ([repo](https://github.com/agentclientprotocol/typescript-sdk)). O pacote `@zed-industries/agent-client-protocol` está abandonado (parou na 0.4.5).

@@ -1,7 +1,7 @@
 import { ShieldQuestion } from 'lucide-react'
 import type { PermissionOptionView } from '@shared/types'
 import { Button } from '@/components/ui/button'
-import type { ChatItem } from '@/lib/chat'
+import type { ChatItem } from '@shared/chat'
 
 type PermissionItem = Extract<ChatItem, { kind: 'permission' }>
 

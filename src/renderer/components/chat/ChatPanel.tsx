@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Folder, Loader2, Square } from 'lucide-react'
 import type { SessionStatus } from '@shared/types'
 import { Button } from '@/components/ui/button'
-import type { ChatItem } from '@/lib/chat'
+import type { ChatItem } from '@shared/chat'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/stores/sessions'
 import { ChatInput } from './ChatInput'
@@ -22,7 +22,9 @@ const STATUS: Record<SessionStatus, { label: string; className: string }> = {
 }
 
 export function ChatPanel({ sessionId }: { sessionId: string }) {
-  const chat = useSessionsStore((s) => s.sessions[sessionId])
+  const chat = useSessionsStore((s) => s.chats[sessionId])
+  const rename = useSessionsStore((s) => s.rename)
+  const [editingTitle, setEditingTitle] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
 
@@ -64,7 +66,29 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           C
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">Claude</div>
+          {editingTitle ? (
+            <input
+              autoFocus
+              defaultValue={info.title}
+              className="w-full rounded border bg-background px-1 text-sm font-medium outline-none"
+              onBlur={(e) => {
+                void rename(sessionId, e.target.value)
+                setEditingTitle(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') setEditingTitle(false)
+              }}
+            />
+          ) : (
+            <div
+              className="truncate text-sm font-medium"
+              onDoubleClick={() => setEditingTitle(true)}
+              title="Duplo clique para renomear"
+            >
+              {info.title} <span className="font-normal text-muted-foreground">· Claude</span>
+            </div>
+          )}
           <div
             className="flex items-center gap-1 truncate text-[11px] text-muted-foreground"
             title={info.cwd}

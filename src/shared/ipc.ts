@@ -2,7 +2,9 @@
  * Contrato tipado de IPC entre main e renderer.
  * Todo canal novo é declarado aqui; preload e main só aceitam canais desta lista.
  */
-import type { AgentId, AgentStatus, SessionEvent, SessionInfo } from './types'
+import type { ChatState } from './chat'
+import type { ProjectConfig } from './project'
+import type { AgentId, AgentStatus, Project, SessionEvent, SessionSummary } from './types'
 
 export interface AppInfo {
   name: string
@@ -11,26 +13,60 @@ export interface AppInfo {
   versions: { electron: string; chrome: string; node: string }
 }
 
+export interface ProjectConfigResult {
+  config: ProjectConfig
+  error: string | null
+  exists: boolean
+}
+
+export interface McpTestResult {
+  ok: boolean
+  tools: string[]
+  error: string | null
+}
+
 /** Canais request/response (renderer → main). */
 export interface InvokeChannels {
   'app:info': { args: []; result: AppInfo }
-  'dialog:pickFolder': { args: []; result: string | null }
+  'dialog:pickFolder': { args: [title?: string]; result: string | null }
   /** Abre um arquivo no app padrão do sistema. */
   'shell:openPath': { args: [path: string]; result: void }
 
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }
+  /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
+  'agents:login': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
 
-  'session:create': { args: [agentId: AgentId, cwd: string]; result: SessionInfo }
+  'projects:list': { args: []; result: Project[] }
+  /** Sem caminho, abre o seletor de pasta. Retorna null se o usuário cancelar. */
+  'projects:add': { args: [path?: string]; result: Project | null }
+  'projects:update': {
+    args: [id: string, patch: { name?: string; color?: string }]
+    result: Project
+  }
+  'projects:reorder': { args: [ids: string[]]; result: void }
+  'projects:remove': { args: [id: string]; result: void }
+  'projects:getConfig': { args: [id: string]; result: ProjectConfigResult }
+  'projects:saveConfig': { args: [id: string, config: ProjectConfig]; result: void }
+  'projects:testMcp': { args: [id: string, serverName: string]; result: McpTestResult }
+
+  /** Só nomes: valores de segredos nunca chegam ao renderer. */
+  'secrets:list': { args: [projectId: string]; result: string[] }
+  'secrets:set': { args: [projectId: string, name: string, value: string]; result: void }
+  'secrets:delete': { args: [projectId: string, name: string]; result: void }
+
+  'sessions:list': { args: [projectId: string]; result: SessionSummary[] }
+  'sessions:listAll': { args: []; result: SessionSummary[] }
+  'session:create': { args: [projectId: string, agentId?: AgentId]; result: SessionSummary }
+  'session:open': { args: [sessionId: string]; result: ChatState }
   'session:prompt': { args: [sessionId: string, text: string]; result: void }
   'session:cancel': { args: [sessionId: string]; result: void }
   'session:permission': {
     args: [sessionId: string, requestId: string, optionId: string | null]
     result: void
   }
-  'session:close': { args: [sessionId: string]; result: void }
-
-  /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
-  'agents:login': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
+  'session:rename': { args: [sessionId: string, title: string]; result: void }
+  'session:stop': { args: [sessionId: string]; result: void }
+  'session:delete': { args: [sessionId: string]; result: void }
 
   'terminal:input': { args: [terminalId: string, data: string]; result: void }
   'terminal:resize': { args: [terminalId: string, cols: number, rows: number]; result: void }
@@ -40,6 +76,8 @@ export interface InvokeChannels {
 /** Canais de evento (main → renderer). */
 export interface EventChannels {
   'session:event': { sessionId: string; event: SessionEvent }
+  /** A lista de sessões de um projeto mudou (nova, título, status). */
+  'sessions:changed': { projectId: string }
   'terminal:data': { terminalId: string; data: string }
   'terminal:exit': { terminalId: string; exitCode: number }
 }
@@ -51,6 +89,7 @@ export type EventChannel = keyof EventChannels
 
 export const EVENT_CHANNELS: readonly EventChannel[] = [
   'session:event',
+  'sessions:changed',
   'terminal:data',
   'terminal:exit',
 ]
