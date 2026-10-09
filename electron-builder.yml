@@ -1,0 +1,40 @@
+appId: dev.clawos.app
+productName: Clawos
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!docs/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.json,.editorconfig,.nvmrc}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
+asarUnpack:
+  - resources/**
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+  # Assinatura/notarização entram no M6.
+  identity: null
+dmg:
+  artifactName: ${name}-${version}-${arch}.${ext}
+win:
+  target:
+    - nsis
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  createDesktopShortcut: always
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: Clawos contributors
+  category: Development
+appImage:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+publish: null
