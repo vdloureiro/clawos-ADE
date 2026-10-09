@@ -94,6 +94,16 @@ describe('WorktreeManager', () => {
     expect(readFileSync(join(repo, 'app.ts'), 'utf8')).toContain('linha A')
   })
 
+  it('alterações não commitadas no projeto: mensagem clara e nada alterado', async () => {
+    const a = await manager.create(repo, 'aaaaaaaa1111')
+    writeFileSync(join(a.path, 'app.ts'), 'linha 1 (A)\nlinha 2\nlinha 3\n')
+    writeFileSync(join(repo, 'app.ts'), 'linha 1\nlinha 2\nlinha 3 (local)\n')
+    const result = await manager.merge(repo, a, 'A')
+    expect(result).toMatchObject({ ok: false, conflicts: ['app.ts'] })
+    expect(result.message).toMatch(/não commitadas/)
+    expect(readFileSync(join(repo, 'app.ts'), 'utf8')).toContain('(local)')
+  })
+
   it('recusa mesclar se o projeto estiver em outra branch', async () => {
     const a = await manager.create(repo, 'aaaaaaaa1111')
     writeFileSync(join(a.path, 'app.ts'), 'mudou\n')

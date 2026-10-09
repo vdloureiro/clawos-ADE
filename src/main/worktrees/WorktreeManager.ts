@@ -131,6 +131,19 @@ export class WorktreeManager {
       return { ok: true, message: `Mesclado em ${info.baseBranch} (${commit}).`, conflicts: [] }
     }
 
+    const output = `${result.stderr}\n${result.stdout}`
+    if (/would be overwritten by merge/.test(output)) {
+      // Alterações não commitadas na pasta do projeto nos mesmos arquivos: o git recusa antes de mexer.
+      const files = [...output.matchAll(/^\s+(\S.*)$/gm)]
+        .map((m) => m[1]!.trim())
+        .filter((f) => !/^Please|^Aborting|^Merge/.test(f))
+      return {
+        ok: false,
+        message: `A pasta do projeto tem alterações não commitadas nos mesmos arquivos. Faça commit (ou stash) delas e mescle de novo; nada foi alterado.`,
+        conflicts: files,
+      }
+    }
+
     const unmerged = await git(repoPath, ['diff', '--name-only', '--diff-filter=U'])
     const conflicts = unmerged.stdout.split('\n').filter(Boolean)
     if (conflicts.length > 0) await git(repoPath, ['merge', '--abort'])
