@@ -1,5 +1,6 @@
 appId: dev.clawos.app
 productName: Clawos
+copyright: Copyright © 2026 Clawos contributors
 directories:
   buildResources: build
   output: dist
@@ -7,38 +8,61 @@ files:
   - '!**/.vscode/*'
   - '!src/*'
   - '!docs/*'
+  - '!scripts/*'
+  - '!.github/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.json,.editorconfig,.nvmrc}'
-  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
-  # O Clawos usa o CLI `claude` do usuário; não redistribuímos o binário nativo do SDK.
-  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.json,.editorconfig,.nvmrc,.npmrc}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts,components.json}'
+  - '!{README.md,CONTRIBUTING.md,CHANGELOG.md}'
+  # O Clawos usa os CLIs que o usuário instalou; não redistribuímos binários de agentes.
+  - '!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**'
+  - '!**/node_modules/@openai/codex*/**'
 asarUnpack:
   - resources/**
-  # Adaptadores ACP rodam como processos Node separados, fora do asar.
-  - node_modules/@agentclientprotocol/**
+  # Os adaptadores ACP rodam como processos Node separados e precisam ler suas
+  # dependências do disco; por isso node_modules e o agentHost ficam fora do asar.
+  - node_modules/**
+  - out/main/agentHost.js
 mac:
   category: public.app-category.developer-tools
   target:
-    - dmg
-    - zip
-  # Assinatura/notarização entram no M6.
-  identity: null
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # Assinatura ad-hoc: sem certificado da Apple, mas o app abre no Apple Silicon.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  artifactName: Clawos-${version}-mac-${arch}.${ext}
 dmg:
-  artifactName: ${name}-${version}-${arch}.${ext}
+  artifactName: Clawos-${version}-mac-${arch}.${ext}
 win:
   target:
-    - nsis
+    - target: nsis
+      arch: [x64]
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: Clawos-${version}-windows-setup.${ext}
   shortcutName: ${productName}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
 linux:
   target:
-    - AppImage
-    - deb
-  maintainer: Clawos contributors
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  maintainer: Clawos contributors <clawos@users.noreply.github.com>
   category: Development
+  synopsis: Vários agentes de código, vários projetos, um chat limpo
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: Clawos-${version}-linux-${arch}.${ext}
+deb:
+  artifactName: Clawos-${version}-linux-${arch}.${ext}
 npmRebuild: false
-publish: null
+publish:
+  provider: github
+  owner: vdloureiro
+  repo: clawos-ADE
+  releaseType: draft

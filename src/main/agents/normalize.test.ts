@@ -131,6 +131,22 @@ describe('normalizeUpdate', () => {
   })
 })
 
+describe('avisos do agente', () => {
+  it('converte notice em aviso, ou em erro quando severo', () => {
+    expect(
+      normalizeUpdate({
+        sessionUpdate: 'notice',
+        severity: 'warning',
+        title: 'MCP "x" falhou',
+        description: 'timeout',
+      }),
+    ).toEqual([{ type: 'notice', text: 'MCP "x" falhou — timeout' }])
+    expect(
+      normalizeUpdate({ sessionUpdate: 'notice', severity: 'error', title: 'Sem créditos' }),
+    ).toEqual([{ type: 'error', message: 'Sem créditos' }])
+  })
+})
+
 describe('normalizePermissionOptions', () => {
   it('mapeia optionId para id', () => {
     expect(
@@ -159,5 +175,18 @@ describe('describeError com data em texto', () => {
     expect(
       describeError({ code: -32603, message: 'Internal error', data: 'invalid transport\n' }),
     ).toBe('invalid transport')
+  })
+})
+
+describe('unpacked', () => {
+  it('troca app.asar por app.asar.unpacked (macOS e Windows)', async () => {
+    const { unpacked } = await import('./AgentSession')
+    expect(unpacked('/A/Clawos.app/Contents/Resources/app.asar/node_modules/x.js')).toBe(
+      '/A/Clawos.app/Contents/Resources/app.asar.unpacked/node_modules/x.js',
+    )
+    expect(unpacked('C:\\Clawos\\resources\\app.asar\\out\\main\\agentHost.js')).toBe(
+      'C:\\Clawos\\resources\\app.asar.unpacked\\out\\main\\agentHost.js',
+    )
+    expect(unpacked('/dev/node_modules/x.js')).toBe('/dev/node_modules/x.js')
   })
 })

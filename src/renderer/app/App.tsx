@@ -5,6 +5,7 @@ import { GlobalSettings } from '@/components/settings/GlobalSettings'
 import { ProjectSettings } from '@/components/settings/ProjectSettings'
 import { ProjectSidebar } from '@/components/sidebar/ProjectSidebar'
 import { Button } from '@/components/ui/button'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Workspace } from '@/components/workspace/Workspace'
 import { openInDock } from '@/lib/dock'
 import { cn } from '@/lib/utils'
@@ -14,6 +15,7 @@ import { subscribeToSessionEvents, useSessionsStore } from '@/stores/sessions'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { CommandPalette } from './CommandPalette'
+import { runCommand } from './commands'
 
 export function App() {
   const theme = useThemeStore((s) => s.theme)
@@ -37,9 +39,11 @@ export function App() {
     const offFocus = window.clawos.on('session:focus', ({ projectId, sessionId }) => {
       void openInDock(projectId, sessionId)
     })
+    const offCommand = window.clawos.on('app:command', ({ command }) => runCommand(command))
     return () => {
       offSessions()
       offFocus()
+      offCommand()
     }
   }, [])
 
@@ -69,7 +73,9 @@ export function App() {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <Workspace />
+        <ErrorBoundary label="O workspace encontrou um erro.">
+          <Workspace />
+        </ErrorBoundary>
       </main>
 
       <CommandPalette />

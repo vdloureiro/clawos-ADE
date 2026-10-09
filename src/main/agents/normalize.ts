@@ -64,6 +64,14 @@ export function normalizeUpdate(update: SessionUpdate): SessionEvent[] {
           })),
         },
       ]
+    case 'notice': {
+      // Avisos do agente (ex.: MCP que falhou ao iniciar, limite de uso).
+      const text = [update.title, update.description].filter(Boolean).join(' — ')
+      if (!text) return []
+      return update.severity === 'error'
+        ? [{ type: 'error', message: text }]
+        : [{ type: 'notice', text }]
+    }
     default:
       return []
   }

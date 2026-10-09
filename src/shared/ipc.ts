@@ -35,6 +35,18 @@ export interface McpTestResult {
   error: string | null
 }
 
+/** Comandos disparados pelo menu da aplicação. */
+export type AppCommand =
+  | 'new-agent'
+  | 'add-project'
+  | 'close-panel'
+  | 'stop-agent'
+  | 'palette'
+  | 'settings'
+  | 'project-settings'
+  | 'toggle-theme'
+  | `project-${number}`
+
 /** Canais request/response (renderer → main). */
 export interface InvokeChannels {
   'app:info': { args: []; result: AppInfo }
@@ -90,6 +102,7 @@ export interface InvokeChannels {
   }
   'session:rename': { args: [sessionId: string, title: string]; result: void }
   'session:stop': { args: [sessionId: string]; result: void }
+  'session:restart': { args: [sessionId: string]; result: ChatState }
   'session:delete': { args: [sessionId: string]; result: void }
 
   'worktree:diff': { args: [sessionId: string]; result: WorktreeDiff }
@@ -107,6 +120,8 @@ export interface EventChannels {
   'session:event': { sessionId: string; event: SessionEvent }
   /** A lista de sessões de um projeto mudou (nova, título, status). */
   'sessions:changed': { projectId: string }
+  /** Comando do menu da aplicação (atalhos de teclado). */
+  'app:command': { command: AppCommand }
   /** Clique numa notificação: trazer esta sessão para o foco. */
   'session:focus': { projectId: string; sessionId: string }
   'terminal:data': { terminalId: string; data: string }
@@ -122,6 +137,7 @@ export const EVENT_CHANNELS: readonly EventChannel[] = [
   'session:event',
   'sessions:changed',
   'session:focus',
+  'app:command',
   'terminal:data',
   'terminal:exit',
 ]

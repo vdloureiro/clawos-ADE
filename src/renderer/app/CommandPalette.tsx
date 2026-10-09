@@ -14,17 +14,6 @@ export function CommandPalette() {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setPaletteOpen(!useUiStore.getState().paletteOpen)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [setPaletteOpen])
-
-  useEffect(() => {
     if (paletteOpen) void window.clawos.invoke('sessions:listAll').then(setSessions)
   }, [paletteOpen])
 

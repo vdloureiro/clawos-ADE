@@ -1,0 +1,43 @@
+name: Release
+
+# Publicar uma versão: atualize "version" no package.json, crie a tag e envie.
+#   git tag v0.1.0 && git push origin v0.1.0
+# Os três jobs anexam seus instaladores ao mesmo release em RASCUNHO no GitHub;
+# revise e publique manualmente.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Lint e testes rodam no workflow de CI; aqui só o build de produção.
+      - run: pnpm build
+      - name: Empacotar e anexar ao release
+        run: pnpm exec electron-builder ${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Sem certificados: o macOS recebe assinatura ad-hoc e o Windows sai sem assinatura.
+          CSC_IDENTITY_AUTO_DISCOVERY: false

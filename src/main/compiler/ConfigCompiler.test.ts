@@ -140,7 +140,7 @@ describe('ConfigCompiler — Codex', () => {
         {
           agentId: 'codex',
           globalMcp: [
-            { name: 'meta_ads', disable: { url: 'https://m/mcp', enabled: false } },
+            { name: 'remote_tools', disable: { url: 'https://m/mcp', enabled: false } },
             { name: 'node_repl', disable: { command: 'node', args: [], enabled: false } },
           ],
         },
@@ -151,7 +151,7 @@ describe('ConfigCompiler — Codex', () => {
     expect(codexConfig(result)).toEqual({
       features: { apps: false },
       mcp_servers: {
-        meta_ads: { url: 'https://m/mcp', enabled: false },
+        remote_tools: { url: 'https://m/mcp', enabled: false },
         node_repl: { command: 'node', args: [], enabled: false },
         supabase: {
           command: 'npx',

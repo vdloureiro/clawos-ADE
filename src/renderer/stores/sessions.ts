@@ -17,6 +17,8 @@ interface SessionsState {
   load: (sessionId: string) => Promise<void>
   apply: (sessionId: string, event: SessionEvent) => void
   rename: (sessionId: string, title: string) => Promise<void>
+  /** Reinicia o processo do agente e recarrega o chat (após erro ou queda). */
+  restart: (sessionId: string) => Promise<void>
   remove: (sessionId: string, projectId: string) => Promise<void>
   setActive: (projectId: string, sessionId: string | null) => void
 }
@@ -76,6 +78,11 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
       if (!current) return s
       return { chats: { ...s.chats, [sessionId]: applyEvent(current, event) } }
     }),
+
+  restart: async (sessionId) => {
+    const chat = await window.clawos.invoke('session:restart', sessionId)
+    set((s) => ({ chats: { ...s.chats, [sessionId]: chat } }))
+  },
 
   rename: async (sessionId, title) => {
     await window.clawos.invoke('session:rename', sessionId, title)

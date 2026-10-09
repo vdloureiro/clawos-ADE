@@ -128,6 +128,12 @@ export class SessionManager {
     this.changed(this.deps.repo.get(id).summary.projectId)
   }
 
+  /** Reinicia o processo do agente (após erro ou queda), retomando a conversa. */
+  restart(id: string): ChatState {
+    this.stop(id)
+    return this.open(id)
+  }
+
   /** Encerra o processo do agente; o histórico fica salvo. */
   stop(id: string): void {
     const live = this.live.get(id)

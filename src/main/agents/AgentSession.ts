@@ -14,9 +14,16 @@ import { getShellEnv } from './shellEnv'
 
 const require = createRequire(__filename)
 
-/** Caminho do adaptador embutido; fora do asar no app empacotado. */
+/**
+ * No app empacotado os adaptadores (e suas dependências) ficam fora do asar, pois rodam
+ * como processos Node separados. Converte `…/app.asar/…` em `…/app.asar.unpacked/…`.
+ */
+export function unpacked(path: string): string {
+  return path.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1')
+}
+
 function resolveAdapter(module: string): string {
-  return require.resolve(module).replace(`app.asar${'/'}`, `app.asar.unpacked/`)
+  return unpacked(require.resolve(module))
 }
 
 type PermissionResolver = (optionId: string | null) => void
@@ -191,7 +198,7 @@ export class AgentSession {
       // Roda o adaptador com o Node embutido no Electron (ver agentHost.ts).
       child = spawn(
         process.execPath,
-        [join(__dirname, 'agentHost.js'), resolveAdapter(agent.acp.module)],
+        [unpacked(join(__dirname, 'agentHost.js')), resolveAdapter(agent.acp.module)],
         {
           cwd: this.cwd,
           env: {

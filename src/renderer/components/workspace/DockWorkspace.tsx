@@ -15,6 +15,7 @@ import { Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { Button } from '@/components/ui/button'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import {
   closeSessionPanel,
   newSessionInDock,
@@ -32,7 +33,11 @@ interface ChatParams {
 }
 
 function ChatDockPanel({ params }: IDockviewPanelProps<ChatParams>) {
-  return <ChatPanel sessionId={params.sessionId} />
+  return (
+    <ErrorBoundary label="Este painel encontrou um erro.">
+      <ChatPanel sessionId={params.sessionId} />
+    </ErrorBoundary>
+  )
 }
 
 const STATUS_DOT: Record<string, string> = {

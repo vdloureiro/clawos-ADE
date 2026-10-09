@@ -3,6 +3,7 @@ import { app, BrowserWindow, dialog, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { closeDb } from './db'
 import { registerIpcHandlers } from './ipc'
+import { buildMenu } from './menu'
 import { getServices, initServices } from './services'
 import { killAllTerminals } from './terminals/terminals'
 
@@ -16,6 +17,8 @@ function createWindow(): void {
     title: 'Clawos',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     backgroundColor: '#0b0b0c',
+    // No Linux o ícone da janela vem daqui (macOS e Windows usam o do pacote).
+    ...(process.platform === 'linux' && { icon: join(__dirname, '../../resources/icon.png') }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -46,6 +49,7 @@ app.whenReady().then(() => {
 
   initServices()
   registerIpcHandlers()
+  buildMenu()
   createWindow()
 
   app.on('activate', () => {

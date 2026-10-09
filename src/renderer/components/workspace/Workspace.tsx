@@ -1,7 +1,6 @@
-import { FolderPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useActiveProject, useProjectsStore } from '@/stores/projects'
 import { DockWorkspace } from './DockWorkspace'
+import { Onboarding } from './Onboarding'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 
 /**
@@ -11,7 +10,6 @@ import { WorkspaceToolbar } from './WorkspaceToolbar'
 export function Workspace() {
   const project = useActiveProject()
   const projects = useProjectsStore((s) => s.projects)
-  const add = useProjectsStore((s) => s.add)
   const visited = useProjectsStore((s) => s.visited)
   const mounted = visited.filter((id) => projects.some((p) => p.id === id))
 
@@ -35,17 +33,7 @@ export function Workspace() {
         {mounted.map((id) => (
           <DockWorkspace key={id} projectId={id} visible={id === project?.id} />
         ))}
-        {!project && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-            <h1 className="text-2xl font-semibold">Clawos</h1>
-            <p className="text-sm text-muted-foreground">
-              Adicione a pasta de um projeto para começar.
-            </p>
-            <Button onClick={() => void add()}>
-              <FolderPlus /> Adicionar projeto
-            </Button>
-          </div>
-        )}
+        {!project && <Onboarding />}
       </div>
     </div>
   )

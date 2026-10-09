@@ -41,7 +41,7 @@ describe('parseCodexMcpList', () => {
         transport: { type: 'stdio', command: '/x/node', args: ['s.js'], env: { TOKEN: 'segredo' } },
       },
       {
-        name: 'meta_ads',
+        name: 'remote_tools',
         enabled: true,
         transport: { type: 'streamable_http', url: 'https://m/mcp', http_headers: { A: 'b' } },
       },
@@ -49,7 +49,7 @@ describe('parseCodexMcpList', () => {
     ])
     expect(parseCodexMcpList(out)).toEqual([
       { name: 'node_repl', disable: { command: '/x/node', args: ['s.js'], enabled: false } },
-      { name: 'meta_ads', disable: { url: 'https://m/mcp', enabled: false } },
+      { name: 'remote_tools', disable: { url: 'https://m/mcp', enabled: false } },
     ])
     expect(parseCodexMcpList('erro')).toEqual([])
   })

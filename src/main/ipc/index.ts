@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
+import packageJson from '../../../package.json'
 import { detectAll, resolveCli } from '../agents/detect'
 import { getAgent } from '../agents/registry'
 import { getShellEnv, which } from '../agents/shellEnv'
@@ -35,7 +36,8 @@ export function registerIpcHandlers(): void {
 
   handle('app:info', () => ({
     name: app.getName(),
-    version: app.getVersion(),
+    // Fora do app empacotado, app.getVersion() pode devolver a versão do Electron.
+    version: packageJson.version,
     platform: process.platform,
     versions: {
       electron: process.versions.electron,
@@ -121,6 +123,7 @@ export function registerIpcHandlers(): void {
   )
   handle('session:rename', (id, title) => sessions.rename(id, title))
   handle('session:stop', (id) => sessions.stop(id))
+  handle('session:restart', (id) => sessions.restart(id))
   handle('session:delete', (id) => sessions.delete(id))
 
   // Worktrees ---------------------------------------------------------------

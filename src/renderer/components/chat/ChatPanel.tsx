@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Folder, GitBranch, Loader2, Square } from 'lucide-react'
+import { Folder, GitBranch, Loader2, RotateCcw, Square } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
 import type { SessionStatus } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import type { ChatItem } from '@shared/chat'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/stores/sessions'
+import { useUiStore } from '@/stores/ui'
 import { ChatInput, type SendPayload } from './ChatInput'
 import { Markdown } from './Markdown'
 import { PermissionCard } from './PermissionCard'
@@ -27,6 +28,8 @@ const STATUS: Record<SessionStatus, { label: string; className: string }> = {
 export function ChatPanel({ sessionId }: { sessionId: string }) {
   const chat = useSessionsStore((s) => s.chats[sessionId])
   const rename = useSessionsStore((s) => s.rename)
+  const restart = useSessionsStore((s) => s.restart)
+  const openGlobalSettings = useUiStore((s) => s.setGlobalSettingsOpen)
   const summary = useSessionsStore((s) =>
     chat ? s.summaries[chat.info.projectId]?.find((x) => x.id === sessionId) : undefined,
   )
@@ -141,6 +144,16 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
               onRespond={respond}
             />
           ))}
+          {(status === 'error' || status === 'closed') && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => void restart(sessionId)}>
+                <RotateCcw /> Reiniciar sessão
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => openGlobalSettings(true)}>
+                Agentes e login
+              </Button>
+            </div>
+          )}
           {showThinking && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="flex gap-1">
