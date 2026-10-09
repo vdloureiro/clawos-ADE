@@ -30,10 +30,14 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  # Assinatura ad-hoc: sem certificado da Apple, mas o app abre no Apple Silicon.
-  identity: '-'
-  hardenedRuntime: false
+  # Assinatura com Developer ID + notarização quando há certificado (CSC_LINK) e as
+  # credenciais da Apple no ambiente — veja docs/release-macos.md. Sem isso, os scripts
+  # dist:mac e o workflow de release usam assinatura ad-hoc (-c.mac.identity=-).
+  hardenedRuntime: true
   gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
   artifactName: Clawos-${version}-mac-${arch}.${ext}
 dmg:
   artifactName: Clawos-${version}-mac-${arch}.${ext}

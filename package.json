@@ -26,10 +26,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "postinstall": "node scripts/postinstall.mjs",
-    "dist": "pnpm build && electron-builder --publish never",
-    "dist:mac": "pnpm build && electron-builder --mac --publish never",
+    "dist": "pnpm build && electron-builder --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false",
+    "dist:mac": "pnpm build && electron-builder --mac --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false",
     "dist:win": "pnpm build && electron-builder --win --publish never",
-    "dist:linux": "pnpm build && electron-builder --linux --publish never"
+    "dist:linux": "pnpm build && electron-builder --linux --publish never",
+    "dist:mac:signed": "pnpm build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.88.0",

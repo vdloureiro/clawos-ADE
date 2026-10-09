@@ -36,8 +36,20 @@ jobs:
       # Lint e testes rodam no workflow de CI; aqui só o build de produção.
       - run: pnpm build
       - name: Empacotar e anexar ao release
-        run: pnpm exec electron-builder ${{ matrix.target }} --publish always
+        shell: bash
+        run: |
+          EXTRA=""
+          if [ "$RUNNER_OS" = "macOS" ] && [ -z "$CSC_LINK" ]; then
+            # Sem certificado Developer ID: assinatura ad-hoc, sem notarização.
+            EXTRA="-c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false"
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          pnpm exec electron-builder ${{ matrix.target }} --publish always $EXTRA
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Sem certificados: o macOS recebe assinatura ad-hoc e o Windows sai sem assinatura.
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # macOS assinado e notarizado (opcional — veja docs/release-macos.md).
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

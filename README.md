@@ -40,9 +40,15 @@ Baixe o instalador da sua plataforma na página de [Releases](https://github.com
 | Windows               | `Clawos-x.y.z-windows-setup.exe`          |
 | Linux                 | `Clawos-x.y.z-linux-*.AppImage` ou `.deb` |
 
-Os instaladores ainda não são assinados com certificados da Apple/Microsoft:
+**macOS — recomendado:** instale pelo Terminal. O comando baixa a versão certa para o seu Mac, instala em Aplicativos e abre o app, sem o aviso de verificação do macOS:
 
-- **macOS:** arraste o Clawos para Aplicativos. Na primeira vez, clique com o botão direito no app → **Abrir** → **Abrir**. Se o macOS disser que o app "está danificado", rode no Terminal: `xattr -cr /Applications/Clawos.app`.
+```bash
+curl -fsSL https://clawos.vercel.app/install.sh | bash
+```
+
+Os instaladores ainda não são notarizados pela Apple nem assinados pela Microsoft ([como ativar a notarização](docs/release-macos.md)):
+
+- **macOS, pelo .dmg:** arraste o Clawos para Aplicativos e abra. Quando o macOS disser que _não pôde verificar se o Clawos está livre de malware_, vá em **Ajustes do Sistema → Privacidade e Segurança**, clique em **Abrir Mesmo Assim** e confirme com a sua senha. Alternativa: `xattr -dr com.apple.quarantine /Applications/Clawos.app`.
 - **Windows:** se o SmartScreen avisar, clique em **Mais informações** → **Executar assim mesmo**.
 - **Linux (AppImage):** `chmod +x Clawos-*.AppImage` e execute.
 
