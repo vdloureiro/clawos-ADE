@@ -9,7 +9,7 @@ interface RunResult {
   stderr: string
 }
 
-async function run(file: string, args: string[]): Promise<RunResult> {
+export async function run(file: string, args: string[]): Promise<RunResult> {
   const env = await getShellEnv()
   return new Promise((resolve) => {
     execFile(file, args, { env, timeout: 10_000 }, (error, stdout, stderr) => {
@@ -80,4 +80,14 @@ export async function resolveCli(id: AgentId): Promise<string> {
   const path = await which(agent.cli)
   if (!path) throw new Error(`${agent.name} não está instalado (comando "${agent.cli}").`)
   return path
+}
+
+/** Nomes dos MCPs globais do usuário neste agente (vazio se não houver como listar). */
+export async function globalMcpNames(id: AgentId): Promise<string[]> {
+  const agent = AGENTS[id]
+  if (!agent.globalMcp) return []
+  const cliPath = await which(agent.cli)
+  if (!cliPath) return []
+  const result = await run(cliPath, agent.globalMcp.args)
+  return result.code === 0 ? agent.globalMcp.parse(result.stdout) : []
 }

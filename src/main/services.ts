@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, Notification, safeStorage } from 'electron'
 import type { SessionInfo } from '@shared/types'
+import { globalMcpNames } from './agents/detect'
 import { getDb } from './db'
 import { LayoutRepo } from './layouts/LayoutRepo'
 import { currentBranch } from './projects/files'
@@ -63,6 +64,7 @@ export function initServices(): Services {
     send: sendToAll,
     notify,
     branchOf: currentBranch,
+    globalMcpNames,
   })
   services = { projects, secrets, sessions, layouts: new LayoutRepo(db) }
   return services

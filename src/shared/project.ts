@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AGENT_IDS } from './agents'
 
 /**
  * Schema de `<projeto>/.clawos/project.yaml` — fonte única de verdade da configuração
@@ -26,14 +27,14 @@ export const agentSettingsSchema = z.object({
   enabled: z.boolean().optional(),
   /**
    * Claude: carregar também a configuração global do usuário (~/.claude: CLAUDE.md,
-   * skills, permissões). Padrão: false — o projeto fica isolado.
+   * skills, permissões). Padrão: false — o projeto fica isolado. Ignorado pelos demais.
    */
   inheritUserConfig: z.boolean().optional(),
 })
 
 export const projectConfigSchema = z.object({
   name: z.string().optional(),
-  defaultAgent: z.enum(['claude']).optional(),
+  defaultAgent: z.enum(AGENT_IDS).optional(),
   instructions: z.string().optional(),
   skills: z.array(z.string()).optional(),
   mcpServers: z

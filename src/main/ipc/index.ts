@@ -85,6 +85,7 @@ export function registerIpcHandlers(): void {
         secret: (name) => secrets.get(id, name),
         readText: () => null,
         generatedDir: '',
+        globalMcpNames: [],
       })
       return await testMcpServer(compiled!, project.path, await getShellEnv())
     } catch (e) {

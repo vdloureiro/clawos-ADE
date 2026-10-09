@@ -7,7 +7,8 @@
 export type { AppInfo, ClawosApi } from './ipc'
 export type { ChatItem, ChatState } from './chat'
 
-export type AgentId = 'claude'
+export type { AgentId } from './agents'
+import type { AgentId } from './agents'
 
 // ---------------------------------------------------------------------------
 // Status dos agentes (detecção de CLI)
@@ -97,6 +98,8 @@ export type SessionEvent =
     }
   | { type: 'permission_resolved'; requestId: string; optionId: string | null }
   | { type: 'turn_end'; stopReason: StopReason }
+  /** Aviso informativo (ex.: limitações de configuração deste agente). */
+  | { type: 'notice'; text: string }
   | { type: 'error'; message: string }
 
 export interface SessionInfo {

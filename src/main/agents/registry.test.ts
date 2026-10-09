@@ -10,7 +10,8 @@ describe('registry', () => {
     for (const [key, agent] of Object.entries(AGENTS)) {
       expect(agent.id).toBe(key)
       expect(agent.cli).not.toBe('')
-      expect(agent.loginArgs.length).toBeGreaterThan(0)
+      expect(Array.isArray(agent.loginArgs)).toBe(true)
+      expect(agent.installHint).not.toBe('')
     }
   })
 
@@ -27,5 +28,18 @@ describe('registry', () => {
     if (claude.acp.kind === 'adapter') {
       expect(claude.acp.env('/x/claude')).toEqual({ CLAUDE_CODE_EXECUTABLE: '/x/claude' })
     }
+  })
+})
+
+describe('parseCodexMcpList', () => {
+  it('lista só os servidores habilitados', async () => {
+    const { parseCodexMcpList } = await import('./registry')
+    const out = JSON.stringify([
+      { name: 'meta_ads', enabled: true },
+      { name: 'codex_app', enabled: false },
+      { name: 'node_repl' },
+    ])
+    expect(parseCodexMcpList(out)).toEqual(['meta_ads', 'node_repl'])
+    expect(parseCodexMcpList('erro')).toEqual([])
   })
 })

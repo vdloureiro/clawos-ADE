@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Folder, GitBranch, Loader2, Square } from 'lucide-react'
+import { AGENT_META } from '@shared/agents'
 import type { SessionStatus } from '@shared/types'
+import { AgentIcon } from '@/components/agents/AgentIcon'
 import { Button } from '@/components/ui/button'
 import type { ChatItem } from '@shared/chat'
 import { cn } from '@/lib/utils'
@@ -65,9 +67,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center gap-3 border-b px-3 py-1.5">
-        <span className="flex size-6 items-center justify-center rounded bg-orange-500/15 text-xs font-semibold text-orange-600 dark:text-orange-400">
-          C
-        </span>
+        <AgentIcon agentId={info.agentId} />
         <div className="min-w-0 flex-1">
           {editingTitle ? (
             <input
@@ -89,7 +89,10 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
               onDoubleClick={() => setEditingTitle(true)}
               title="Duplo clique para renomear"
             >
-              {info.title} <span className="font-normal text-muted-foreground">· Claude</span>
+              {info.title}{' '}
+              <span className="font-normal text-muted-foreground">
+                · {AGENT_META[info.agentId].name}
+              </span>
             </div>
           )}
           <div
@@ -121,7 +124,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
           {status === 'starting' && items.length === 0 && (
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Iniciando sessão com o Claude…
+              <Loader2 className="size-4 animate-spin" /> Iniciando sessão com o{' '}
+              {AGENT_META[info.agentId].name}…
             </div>
           )}
           {items.map((item, index) => (

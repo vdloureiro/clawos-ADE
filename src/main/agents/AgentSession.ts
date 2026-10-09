@@ -52,6 +52,8 @@ export class AgentSession {
   private readonly pendingPermissions = new Map<string, PermissionResolver>()
   private readonly stderrTail: string[] = []
   private closing = false
+  /** Durante `session/load`, updates são o histórico sendo reenviado. */
+  private replaying = false
 
   constructor(private readonly options: AgentSessionOptions) {
     this.id = options.id
@@ -70,32 +72,47 @@ export class AgentSession {
         clientInfo: { name: 'clawos', title: 'Clawos', version: '0.0.1' },
       })
       const { compiled, resumeAcpSessionId } = this.options
-      const canResume = Boolean(init.agentCapabilities?.sessionCapabilities?.resume)
+      const caps = init.agentCapabilities
+      const base = {
+        cwd: this.cwd,
+        mcpServers: compiled.mcpServers,
+        ...(compiled.additionalDirectories.length > 0 && {
+          additionalDirectories: compiled.additionalDirectories,
+        }),
+        _meta: compiled.meta,
+      }
 
-      if (resumeAcpSessionId && canResume) {
-        // Retoma o contexto da conversa sem reenviar o histórico (a UI já o tem do banco).
+      if (resumeAcpSessionId && caps?.sessionCapabilities?.resume) {
+        // Retoma o contexto sem reenviar o histórico (a UI já o tem do banco).
         await connection.agent.request(acp.methods.agent.session.resume, {
           sessionId: resumeAcpSessionId,
-          cwd: this.cwd,
-          mcpServers: compiled.mcpServers,
-          _meta: compiled.meta,
+          ...base,
         })
         this.acpSessionId = resumeAcpSessionId
+      } else if (resumeAcpSessionId && caps?.loadSession) {
+        // `session/load` reenvia o histórico como updates; descartamos para não duplicar.
+        this.replaying = true
+        try {
+          await connection.agent.request(acp.methods.agent.session.load, {
+            sessionId: resumeAcpSessionId,
+            ...base,
+          })
+        } finally {
+          this.replaying = false
+        }
+        this.acpSessionId = resumeAcpSessionId
       } else {
-        const session = await connection.agent.request(acp.methods.agent.session.new, {
-          cwd: this.cwd,
-          mcpServers: compiled.mcpServers,
-          _meta: compiled.meta,
-        })
+        const session = await connection.agent.request(acp.methods.agent.session.new, base)
         this.acpSessionId = session.sessionId
         this.options.onAcpSessionId(session.sessionId)
         if (resumeAcpSessionId) {
           this.emit({
-            type: 'error',
-            message: 'Este agente não suporta retomar conversas; o contexto anterior foi perdido.',
+            type: 'notice',
+            text: 'Este agente não suporta retomar conversas; o contexto anterior não foi carregado.',
           })
         }
       }
+      for (const text of compiled.warnings) this.emit({ type: 'notice', text })
       this.setStatus('ready')
     } catch (error) {
       this.fail(error)
@@ -167,6 +184,7 @@ export class AgentSession {
     const agent = getAgent(this.agentId)
     const cliPath = await resolveCli(this.agentId)
     const shellEnv = await getShellEnv()
+    const { compiled } = this.options
 
     let child: ChildProcess
     if (agent.acp.kind === 'adapter') {
@@ -176,14 +194,19 @@ export class AgentSession {
         [join(__dirname, 'agentHost.js'), resolveAdapter(agent.acp.module)],
         {
           cwd: this.cwd,
-          env: { ...shellEnv, ...agent.acp.env(cliPath), ELECTRON_RUN_AS_NODE: '1' },
+          env: {
+            ...shellEnv,
+            ...compiled.env,
+            ...agent.acp.env(cliPath),
+            ELECTRON_RUN_AS_NODE: '1',
+          },
           stdio: ['pipe', 'pipe', 'pipe'],
         },
       )
     } else {
-      child = spawn(cliPath, agent.acp.args, {
+      child = spawn(cliPath, compiled.args ?? agent.acp.args, {
         cwd: this.cwd,
-        env: shellEnv,
+        env: { ...shellEnv, ...compiled.env },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
     }
@@ -214,6 +237,7 @@ export class AgentSession {
     this.connection = acp
       .client({ name: 'clawos' })
       .onNotification(acp.methods.client.session.update, (ctx) => {
+        if (this.replaying) return
         for (const event of normalizeUpdate(ctx.params.update)) this.emit(event)
       })
       .onRequest(acp.methods.client.session.requestPermission, async (ctx) => {

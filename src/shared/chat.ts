@@ -123,6 +123,11 @@ export function applyEvent(state: ChatState, event: SessionEvent): ChatState {
           { kind: 'notice', id: localId('notice'), text: stopReasonText(event.stopReason) },
         ],
       }
+    case 'notice':
+      return {
+        ...state,
+        items: [...state.items, { kind: 'notice', id: localId('notice'), text: event.text }],
+      }
     case 'error':
       return {
         ...state,

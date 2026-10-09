@@ -9,6 +9,7 @@ import {
   currentLayoutJson,
   newSessionInDock,
 } from '@/lib/dock'
+import { AgentIcon } from '@/components/agents/AgentIcon'
 import { useAgentsStore } from '@/stores/agents'
 
 /** Botão com menu suspenso que fecha ao clicar fora. */
@@ -47,6 +48,17 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
   const agents = useAgentsStore((s) => s.statuses)
   const [presets, setPresets] = useState<LayoutPreset[]>([])
   const [mode, setMode] = useState<'shared' | 'worktree'>('shared')
+  const [disabled, setDisabled] = useState<string[]>([])
+
+  // Agentes desligados no project.yaml não aparecem para este projeto.
+  const refreshEnabled = async () => {
+    const { config } = await window.clawos.invoke('projects:getConfig', project.id)
+    setDisabled(
+      Object.entries(config.agents ?? {})
+        .filter(([, a]) => a.enabled === false)
+        .map(([id]) => id),
+    )
+  }
 
   const refreshPresets = async () => setPresets(await window.clawos.invoke('presets:list'))
 
@@ -132,7 +144,13 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
 
       <Popover
         trigger={(toggle) => (
-          <Button size="sm" onClick={toggle}>
+          <Button
+            size="sm"
+            onClick={() => {
+              void refreshEnabled()
+              toggle()
+            }}
+          >
             <Plus /> Agente
           </Button>
         )}
@@ -158,27 +176,34 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
               </button>
             </div>
             <div className="px-2 py-1 text-[11px] text-muted-foreground">Agente</div>
-            {agents.map((agent) => {
-              const ready = agent.installed && agent.loggedIn !== false
-              return (
-                <button
-                  key={agent.id}
-                  type="button"
-                  className={item}
-                  disabled={!ready}
-                  onClick={() => {
-                    void newSessionInDock(project.id, { agentId: agent.id })
-                    close()
-                  }}
-                >
-                  {agent.name}
-                  {agent.id === project.defaultAgent && (
-                    <span className="text-muted-foreground">(padrão)</span>
-                  )}
-                  {!ready && <span className="ml-auto text-muted-foreground">indisponível</span>}
-                </button>
-              )
-            })}
+            {agents
+              .filter((agent) => !disabled.includes(agent.id))
+              .map((agent) => {
+                const ready = agent.installed && agent.loggedIn !== false
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    className={item}
+                    disabled={!ready}
+                    onClick={() => {
+                      void newSessionInDock(project.id, { agentId: agent.id })
+                      close()
+                    }}
+                  >
+                    <AgentIcon agentId={agent.id} className="size-5 text-[10px]" />
+                    {agent.name}
+                    {agent.id === project.defaultAgent && (
+                      <span className="text-muted-foreground">(padrão)</span>
+                    )}
+                    {!ready && (
+                      <span className="ml-auto text-muted-foreground">
+                        {agent.installed ? 'não logado' : 'não instalado'}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
           </div>
         )}
       </Popover>

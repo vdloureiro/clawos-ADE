@@ -5,7 +5,7 @@ import { applyEvent, createChatState, type ChatState } from '@shared/chat'
 import type { AgentId, SessionEvent, SessionInfo, SessionSummary } from '@shared/types'
 import { AgentSession } from '../agents/AgentSession'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
-import { materializePlugin } from '../compiler/materialize'
+import { materialize } from '../compiler/materialize'
 import type { ProjectManager } from '../projects/ProjectManager'
 import type { SecretStore } from '../secrets/SecretStore'
 import type { SessionRepo } from './SessionRepo'
@@ -28,6 +28,8 @@ export interface SessionManagerDeps {
   notify: (session: SessionInfo, kind: 'finished' | 'permission', detail: string) => void
   /** Branch git atual da pasta, ou null. */
   branchOf: (cwd: string) => Promise<string | null>
+  /** MCPs globais do usuário no agente (o compilador os desliga na sessão). */
+  globalMcpNames: (agentId: AgentId) => Promise<string[]>
 }
 
 const NEW_TITLE = 'Nova conversa'
@@ -158,29 +160,30 @@ export class SessionManager {
       this.changed(summary.projectId)
     })
 
-    let compiled: CompiledSession
-    try {
-      compiled = this.compileFor(summary)
-    } catch (error) {
-      emit({ type: 'error', message: (error as Error).message })
-      emit({ type: 'status_change', status: 'error' })
-      return
-    }
-
-    live.agent = new AgentSession({
-      id: summary.id,
-      agentId: summary.agentId,
-      cwd: summary.cwd,
-      compiled,
-      resumeAcpSessionId,
-      emit,
-      onAcpSessionId: (acpSessionId) => this.deps.repo.update(summary.id, { acpSessionId }),
-    })
-    void live.agent.start()
+    void this.compileFor(summary).then(
+      (compiled) => {
+        if (this.live.get(summary.id) !== live) return // fechada enquanto compilava
+        live.agent = new AgentSession({
+          id: summary.id,
+          agentId: summary.agentId,
+          cwd: summary.cwd,
+          compiled,
+          resumeAcpSessionId,
+          emit,
+          onAcpSessionId: (acpSessionId) => this.deps.repo.update(summary.id, { acpSessionId }),
+        })
+        void live.agent.start()
+      },
+      (error: Error) => {
+        emit({ type: 'error', message: error.message })
+        emit({ type: 'status_change', status: 'error' })
+      },
+    )
   }
 
-  private compileFor(summary: SessionSummary): CompiledSession {
+  private async compileFor(summary: SessionSummary): Promise<CompiledSession> {
     const project = this.deps.projects.get(summary.projectId)
+    const globalMcpNames = await this.deps.globalMcpNames(summary.agentId)
     const { config, error } = this.deps.projects.readConfig(project.path)
     if (error) throw new Error(error)
     const compiled = compile({
@@ -196,8 +199,9 @@ export class SessionManager {
         }
       },
       generatedDir: join(this.deps.generatedRoot, summary.id),
+      globalMcpNames,
     })
-    if (compiled.plugin) materializePlugin(compiled.plugin)
+    materialize(join(this.deps.generatedRoot, summary.id), compiled)
     return compiled
   }
 

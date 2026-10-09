@@ -1,35 +1,27 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { CompiledSession } from './ConfigCompiler'
 
 /**
- * Gera em disco (fora do repositório do projeto) o plugin local com as skills do
- * projeto, apontando por symlink para as pastas originais — editar a skill no projeto
- * reflete na próxima sessão sem copiar nada.
+ * Escreve em `dir` (fora do repositório do projeto) os arquivos e links que o compilador
+ * pediu. Links apontam para as pastas originais — editar uma skill no projeto reflete na
+ * próxima sessão sem copiar nada. O diretório é recriado do zero a cada sessão.
  */
-export function materializePlugin(plugin: NonNullable<CompiledSession['plugin']>): void {
-  for (const skill of plugin.skills) {
-    if (!existsSync(join(skill.source, 'SKILL.md'))) {
-      throw new Error(`Skill sem SKILL.md: ${skill.source}`)
+export function materialize(dir: string, compiled: Pick<CompiledSession, 'files' | 'links'>): void {
+  for (const link of compiled.links) {
+    if (link.requires && !existsSync(join(link.target, link.requires))) {
+      throw new Error(`${link.requires} não encontrado em: ${link.target}`)
     }
   }
-  rmSync(plugin.dir, { recursive: true, force: true })
-  mkdirSync(join(plugin.dir, '.claude-plugin'), { recursive: true })
-  mkdirSync(join(plugin.dir, 'skills'), { recursive: true })
-  writeFileSync(
-    join(plugin.dir, '.claude-plugin', 'plugin.json'),
-    JSON.stringify(
-      {
-        name: plugin.name,
-        version: '0.0.0',
-        description: 'Skills do projeto, geradas pelo Clawos',
-      },
-      null,
-      2,
-    ),
-  )
-  for (const skill of plugin.skills) {
+  rmSync(dir, { recursive: true, force: true })
+  if (compiled.files.length === 0 && compiled.links.length === 0) return
+  for (const file of compiled.files) {
+    mkdirSync(dirname(file.path), { recursive: true })
+    writeFileSync(file.path, file.content)
+  }
+  for (const link of compiled.links) {
+    mkdirSync(dirname(link.path), { recursive: true })
     // 'junction' funciona sem privilégios de administrador no Windows.
-    symlinkSync(skill.source, join(plugin.dir, 'skills', skill.name), 'junction')
+    symlinkSync(link.target, link.path, 'junction')
   }
 }

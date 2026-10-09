@@ -59,6 +59,18 @@ export function AgentStatusList() {
                 </button>
               </div>
             )}
+            {status.installed && status.loggedIn === null && (
+              <div className="mt-1 ml-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+                Login verificado ao abrir a sessão.
+                <button
+                  type="button"
+                  className="underline-offset-2 hover:underline"
+                  onClick={() => setLoginFor(status)}
+                >
+                  Entrar
+                </button>
+              </div>
+            )}
             {status.installed && status.loggedIn === false && (
               <Button
                 size="sm"

@@ -13,7 +13,9 @@ import {
 } from 'lucide-react'
 import type { McpTestResult, ProjectConfigResult } from '@shared/ipc'
 import { isRemoteMcp, secretRefs, type McpServerConfig, type ProjectConfig } from '@shared/project'
-import type { Project } from '@shared/types'
+import { AGENT_IDS, AGENT_META } from '@shared/agents'
+import type { AgentId, Project } from '@shared/types'
+import { AgentIcon } from '@/components/agents/AgentIcon'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
@@ -177,12 +179,9 @@ interface DraftProps {
 
 function GeneralTab({ project, draft, setDraft }: DraftProps & { project: Project }) {
   const update: SetDraft = (fn) => setDraft(fn)
-  const claude = draft.agents?.['claude'] ?? {}
-  const setClaude = (patch: Record<string, boolean>) =>
-    update((c) => ({
-      ...c,
-      agents: { ...c.agents, claude: { ...c.agents?.['claude'], ...patch } },
-    }))
+  const settingsOf = (id: AgentId) => draft.agents?.[id] ?? {}
+  const setAgent = (id: AgentId, patch: Record<string, boolean>) =>
+    update((c) => ({ ...c, agents: { ...c.agents, [id]: { ...c.agents?.[id], ...patch } } }))
 
   return (
     <div className="max-w-lg space-y-4">
@@ -198,12 +197,15 @@ function GeneralTab({ project, draft, setDraft }: DraftProps & { project: Projec
         <Label>Agente padrão</Label>
         <select
           className="h-8 w-full rounded-md border bg-background px-2 text-sm"
-          value={draft.defaultAgent ?? 'claude'}
-          onChange={(e) => update((c) => ({ ...c, defaultAgent: e.target.value as 'claude' }))}
+          value={draft.defaultAgent ?? project.defaultAgent}
+          onChange={(e) => update((c) => ({ ...c, defaultAgent: e.target.value as AgentId }))}
         >
-          <option value="claude">Claude</option>
+          {AGENT_IDS.map((id) => (
+            <option key={id} value={id}>
+              {AGENT_META[id].name}
+            </option>
+          ))}
         </select>
-        <p className="text-[11px] text-muted-foreground">Codex e Gemini chegam no M4.</p>
       </div>
       <div className="space-y-1">
         <Label>Instruções</Label>
@@ -213,35 +215,39 @@ function GeneralTab({ project, draft, setDraft }: DraftProps & { project: Projec
           onChange={(e) => update((c) => ({ ...c, instructions: e.target.value || undefined }))}
         />
         <p className="text-[11px] text-muted-foreground">
-          O CLAUDE.md na raiz é lido nativamente. Outro arquivo é anexado às instruções do agente.
+          Cada agente lê o seu arquivo nativo (CLAUDE.md, AGENTS.md, GEMINI.md). Um arquivo
+          diferente é entregue a todos os agentes do projeto.
         </p>
       </div>
       <div className="space-y-2">
-        <Label>Claude</Label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={claude.enabled !== false}
-            onChange={(e) => setClaude({ enabled: e.target.checked })}
-          />
-          Habilitado neste projeto
-        </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={claude.inheritUserConfig === true}
-            onChange={(e) => setClaude({ inheritUserConfig: e.target.checked })}
-          />
-          <span>
-            Usar também minha configuração global do Claude
-            <span className="block text-[11px] text-muted-foreground">
-              Carrega ~/.claude (CLAUDE.md, skills e permissões globais). Desligado, o projeto fica
-              isolado. MCPs globais nunca são carregados.
-            </span>
-          </span>
-        </label>
+        <Label>Agentes neste projeto</Label>
+        {AGENT_IDS.map((id) => (
+          <label key={id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settingsOf(id).enabled !== false}
+              onChange={(e) => setAgent(id, { enabled: e.target.checked })}
+            />
+            <AgentIcon agentId={id} className="size-5 text-[10px]" />
+            {AGENT_META[id].name}
+          </label>
+        ))}
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={settingsOf('claude').inheritUserConfig === true}
+          onChange={(e) => setAgent('claude', { inheritUserConfig: e.target.checked })}
+        />
+        <span>
+          Claude: usar também minha configuração global
+          <span className="block text-[11px] text-muted-foreground">
+            Carrega ~/.claude (CLAUDE.md, skills e permissões globais). Desligado, o projeto fica
+            isolado. MCPs globais nunca são carregados em nenhum agente.
+          </span>
+        </span>
+      </label>
     </div>
   )
 }
