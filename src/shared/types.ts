@@ -82,7 +82,7 @@ export type StopReason = 'end_turn' | 'max_tokens' | 'max_turn_requests' | 'refu
 
 export type SessionEvent =
   | { type: 'status_change'; status: SessionStatus; detail?: string }
-  | { type: 'user_message'; id: string; text: string }
+  | { type: 'user_message'; id: string; text: string; attachments?: string[] }
   | { type: 'text_delta'; messageId: string; text: string }
   | { type: 'thought_delta'; messageId: string; text: string }
   | { type: 'tool_call_start'; toolCall: ToolCallView }
@@ -109,6 +109,8 @@ export interface SessionInfo {
 
 /** Linha da lista de conversas de um projeto. `live` = processo do agente rodando. */
 export interface SessionSummary extends SessionInfo {
+  /** Branch git da pasta da sessão, quando houver. */
+  branch: string | null
   status: SessionStatus
   live: boolean
   createdAt: number
@@ -140,3 +142,10 @@ export const PROJECT_COLORS = [
   '#14b8a6',
   '#ef4444',
 ] as const
+
+export interface LayoutPreset {
+  id: string
+  name: string
+  /** `SerializedDockview` em JSON. */
+  json: string
+}

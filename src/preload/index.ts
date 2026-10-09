@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import { EVENT_CHANNELS, type ClawosApi } from '@shared/ipc'
 
 const api: ClawosApi = {
@@ -12,6 +12,7 @@ const api: ClawosApi = {
       ipcRenderer.removeListener(channel, wrapped)
     }
   },
+  pathForFile: (file) => webUtils.getPathForFile(file),
 }
 
 contextBridge.exposeInMainWorld('clawos', api)

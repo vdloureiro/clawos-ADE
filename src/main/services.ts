@@ -1,6 +1,9 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, safeStorage } from 'electron'
+import { app, BrowserWindow, Notification, safeStorage } from 'electron'
+import type { SessionInfo } from '@shared/types'
 import { getDb } from './db'
+import { LayoutRepo } from './layouts/LayoutRepo'
+import { currentBranch } from './projects/files'
 import { ProjectManager } from './projects/ProjectManager'
 import { SecretStore } from './secrets/SecretStore'
 import { SessionManager } from './sessions/SessionManager'
@@ -11,6 +14,35 @@ export interface Services {
   projects: ProjectManager
   secrets: SecretStore
   sessions: SessionManager
+  layouts: LayoutRepo
+}
+
+function sendToAll(channel: string, payload: unknown): void {
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
+}
+
+/** Notificação do SO quando a janela não está em foco; o clique abre a sessão. */
+function notify(session: SessionInfo, kind: 'finished' | 'permission', detail: string): void {
+  const focused = BrowserWindow.getAllWindows().some((w) => w.isFocused())
+  if (focused || !Notification.isSupported()) return
+  const notification = new Notification({
+    title:
+      kind === 'permission'
+        ? `${session.title} — aguardando aprovação`
+        : `${session.title} — concluído`,
+    body: detail.replace(/\s+/g, ' ').slice(0, 180),
+    silent: false,
+  })
+  notification.on('click', () => {
+    const window = BrowserWindow.getAllWindows()[0]
+    if (window) {
+      if (window.isMinimized()) window.restore()
+      window.show()
+      window.focus()
+    }
+    sendToAll('session:focus', { projectId: session.projectId, sessionId: session.id })
+  })
+  notification.show()
 }
 
 let services: Services | null = null
@@ -28,11 +60,11 @@ export function initServices(): Services {
     secrets,
     repo: new SessionRepo(db),
     generatedRoot: join(app.getPath('userData'), 'generated'),
-    send: (channel, payload) => {
-      for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
-    },
+    send: sendToAll,
+    notify,
+    branchOf: currentBranch,
   })
-  services = { projects, secrets, sessions }
+  services = { projects, secrets, sessions, layouts: new LayoutRepo(db) }
   return services
 }
 

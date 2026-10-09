@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 import { projectActivity, useSessionsStore, type ProjectActivity } from '@/stores/sessions'
 import { useUiStore } from '@/stores/ui'
+import { newSessionInDock, openInDock, removeSessionPanel } from '@/lib/dock'
 
 function ActivityIndicator({ activity }: { activity: ProjectActivity }) {
   if (activity === 'awaiting')
@@ -270,14 +271,14 @@ const STATUS_DOT: Record<string, string> = {
 }
 
 function SessionList({ project, sessions }: { project: Project; sessions: SessionSummary[] }) {
-  const { activeByProject, create, open, remove } = useSessionsStore()
+  const { activeByProject, remove } = useSessionsStore()
   const active = activeByProject[project.id]
 
   return (
     <div className="mt-0.5 mb-1 ml-3 border-l pl-2">
       <button
         type="button"
-        onClick={() => void create(project.id)}
+        onClick={() => void newSessionInDock(project.id)}
         className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground"
       >
         <MessageSquarePlus className="size-3" /> Nova conversa
@@ -285,7 +286,7 @@ function SessionList({ project, sessions }: { project: Project; sessions: Sessio
       {sessions.slice(0, 30).map((session) => (
         <div
           key={session.id}
-          onClick={() => void open(session.id, project.id)}
+          onClick={() => void openInDock(project.id, session.id)}
           className={cn(
             'group flex cursor-default items-center gap-2 rounded px-2 py-1 text-xs',
             session.id === active
@@ -307,8 +308,10 @@ function SessionList({ project, sessions }: { project: Project; sessions: Sessio
             title="Apagar conversa"
             onClick={(e) => {
               e.stopPropagation()
-              if (confirm(`Apagar a conversa "${session.title}"?`))
+              if (confirm(`Apagar a conversa "${session.title}"?`)) {
+                removeSessionPanel(project.id, session.id)
                 void remove(session.id, project.id)
+              }
             }}
           >
             <Trash2 className="size-3" />

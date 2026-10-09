@@ -8,6 +8,7 @@ interface SessionRow {
   agent_id: string
   title: string
   acp_session_id: string | null
+  branch: string | null
   status: string
   created_at: number
   updated_at: number
@@ -88,9 +89,15 @@ export class SessionRepo {
 
   update(
     id: string,
-    patch: { title?: string; status?: SessionStatus; acpSessionId?: string },
+    patch: {
+      title?: string
+      status?: SessionStatus
+      acpSessionId?: string
+      branch?: string | null
+    },
   ): void {
     const sets: string[] = ['updated_at = @now']
+    if (patch.branch !== undefined) sets.push('branch = @branch')
     if (patch.title !== undefined) sets.push('title = @title')
     if (patch.status !== undefined) sets.push('status = @status')
     if (patch.acpSessionId !== undefined) sets.push('acp_session_id = @acpSessionId')
@@ -135,6 +142,7 @@ function toStored(row: SessionRow): StoredSession {
       agentId: row.agent_id as AgentId,
       cwd: row.cwd,
       title: row.title,
+      branch: row.branch,
       // Sessões fora da memória estão sempre encerradas; o status vivo vem do SessionManager.
       status: 'closed',
       live: false,

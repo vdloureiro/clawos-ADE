@@ -12,8 +12,9 @@ interface SessionsState {
 
   loadAll: () => Promise<void>
   loadProject: (projectId: string) => Promise<void>
-  create: (projectId: string, agentId?: AgentId) => Promise<string>
-  open: (sessionId: string, projectId: string) => Promise<void>
+  create: (projectId: string, agentId?: AgentId) => Promise<SessionSummary>
+  /** Garante o chat carregado (retomando o agente se estiver encerrado). */
+  load: (sessionId: string) => Promise<void>
   apply: (sessionId: string, event: SessionEvent) => void
   rename: (sessionId: string, title: string) => Promise<void>
   remove: (sessionId: string, projectId: string) => Promise<void>
@@ -49,15 +50,19 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
 
   create: async (projectId, agentId) => {
     const summary = await window.clawos.invoke('session:create', projectId, agentId)
-    await get().open(summary.id, projectId)
-    return summary.id
+    set((s) => ({
+      summaries: { ...s.summaries, [projectId]: [summary, ...(s.summaries[projectId] ?? [])] },
+    }))
+    await get().load(summary.id)
+    return summary
   },
 
-  open: async (sessionId, projectId) => {
-    get().setActive(projectId, sessionId)
+  load: async (sessionId) => {
     if (get().chats[sessionId]) {
       // Já carregado; se o processo foi encerrado, reabrir retoma a sessão no main.
-      const summary = get().summaries[projectId]?.find((s) => s.id === sessionId)
+      const summary = Object.values(get().summaries)
+        .flat()
+        .find((s) => s.id === sessionId)
       if (!summary || summary.live) return
     }
     const chat = await window.clawos.invoke('session:open', sessionId)

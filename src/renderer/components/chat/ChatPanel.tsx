@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Folder, Loader2, Square } from 'lucide-react'
+import { Folder, GitBranch, Loader2, Square } from 'lucide-react'
 import type { SessionStatus } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import type { ChatItem } from '@shared/chat'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/stores/sessions'
-import { ChatInput } from './ChatInput'
+import { ChatInput, type SendPayload } from './ChatInput'
 import { Markdown } from './Markdown'
 import { PermissionCard } from './PermissionCard'
 import { PlanView } from './PlanView'
@@ -24,6 +24,9 @@ const STATUS: Record<SessionStatus, { label: string; className: string }> = {
 export function ChatPanel({ sessionId }: { sessionId: string }) {
   const chat = useSessionsStore((s) => s.chats[sessionId])
   const rename = useSessionsStore((s) => s.rename)
+  const branch = useSessionsStore(
+    (s) => chat && s.summaries[chat.info.projectId]?.find((x) => x.id === sessionId)?.branch,
+  )
   const [editingTitle, setEditingTitle] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
@@ -51,9 +54,9 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const showThinking =
     status === 'working' && last?.kind !== 'assistant' && last?.kind !== 'thought'
 
-  const send = (text: string) => {
+  const send = ({ text, attachments }: SendPayload) => {
     stickToBottom.current = true
-    void window.clawos.invoke('session:prompt', sessionId, text)
+    void window.clawos.invoke('session:prompt', sessionId, text, attachments)
   }
   const stop = () => void window.clawos.invoke('session:cancel', sessionId)
   const respond = (requestId: string, optionId: string | null) =>
@@ -61,7 +64,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center gap-3 border-b px-4 py-2">
+      <header className="flex items-center gap-3 border-b px-3 py-1.5">
         <span className="flex size-6 items-center justify-center rounded bg-orange-500/15 text-xs font-semibold text-orange-600 dark:text-orange-400">
           C
         </span>
@@ -95,6 +98,12 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           >
             <Folder className="size-3 shrink-0" />
             <span className="truncate">{info.cwd}</span>
+            {branch && (
+              <>
+                <GitBranch className="ml-2 size-3 shrink-0" />
+                <span className="shrink-0">{branch}</span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -141,6 +150,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
       <ChatInput
         disabled={status === 'starting' || status === 'error' || status === 'closed'}
         working={working}
+        cwd={info.cwd}
+        loadFiles={() => window.clawos.invoke('projects:files', info.projectId)}
         onSend={send}
         onStop={stop}
       />
@@ -166,6 +177,19 @@ function ChatItemView({
       return (
         <div className="ml-auto max-w-[85%] rounded-lg bg-secondary px-3 py-2 text-sm whitespace-pre-wrap select-text">
           {item.text}
+          {item.attachments && item.attachments.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {item.attachments.map((path) => (
+                <span
+                  key={path}
+                  className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-[11px]"
+                  title={path}
+                >
+                  {relativize(path, cwd)}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )
     case 'assistant':

@@ -3,7 +3,7 @@ import { Command } from 'cmdk'
 import { FolderPlus, MessageSquare, MessageSquarePlus, Settings } from 'lucide-react'
 import type { SessionSummary } from '@shared/types'
 import { useActiveProject, useProjectsStore } from '@/stores/projects'
-import { useSessionsStore } from '@/stores/sessions'
+import { newSessionInDock, openInDock } from '@/lib/dock'
 import { useUiStore } from '@/stores/ui'
 
 /** ⌘K / Ctrl+K: busca rápida de projetos, conversas e ações. */
@@ -11,7 +11,6 @@ export function CommandPalette() {
   const { paletteOpen, setPaletteOpen, openProjectSettings } = useUiStore()
   const { projects, select, add } = useProjectsStore()
   const activeProject = useActiveProject()
-  const { create, open } = useSessionsStore()
   const [sessions, setSessions] = useState<SessionSummary[]>([])
 
   useEffect(() => {
@@ -64,7 +63,10 @@ export function CommandPalette() {
 
           <Command.Group heading="Ações" className={group}>
             {activeProject && (
-              <Command.Item className={item} onSelect={run(() => void create(activeProject.id))}>
+              <Command.Item
+                className={item}
+                onSelect={run(() => void newSessionInDock(activeProject.id))}
+              >
                 <MessageSquarePlus className="size-4" /> Nova conversa em {activeProject.name}
               </Command.Item>
             )}
@@ -107,10 +109,7 @@ export function CommandPalette() {
                 key={session.id}
                 value={`conversa ${session.title} ${projectName(session.projectId)} ${session.id}`}
                 className={item}
-                onSelect={run(() => {
-                  select(session.projectId)
-                  void open(session.id, session.projectId)
-                })}
+                onSelect={run(() => void openInDock(session.projectId, session.id))}
               >
                 <MessageSquare className="size-4 shrink-0" />
                 <span className="truncate">{session.title}</span>

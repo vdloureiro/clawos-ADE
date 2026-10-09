@@ -5,6 +5,7 @@ import { getAgent } from '../agents/registry'
 import { getShellEnv } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
+import { listProjectFiles } from '../projects/files'
 import { getServices } from '../services'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
 
@@ -29,7 +30,7 @@ async function pickFolder(title?: string): Promise<string | null> {
 }
 
 export function registerIpcHandlers(): void {
-  const { projects, secrets, sessions } = getServices()
+  const { projects, secrets, sessions, layouts } = getServices()
 
   handle('app:info', () => ({
     name: app.getName(),
@@ -91,6 +92,15 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  handle('projects:files', (id) => listProjectFiles(projects.get(id).path))
+
+  // Layouts -----------------------------------------------------------------
+  handle('layouts:get', (projectId) => layouts.get(projectId))
+  handle('layouts:save', (projectId, json) => layouts.save(projectId, json))
+  handle('presets:list', () => layouts.listPresets())
+  handle('presets:save', (name, json) => layouts.savePreset(name, json))
+  handle('presets:delete', (id) => layouts.deletePreset(id))
+
   // Segredos ----------------------------------------------------------------
   handle('secrets:list', (projectId) => secrets.names(projectId))
   handle('secrets:set', (projectId, name, value) => secrets.set(projectId, name, value))
@@ -102,7 +112,7 @@ export function registerIpcHandlers(): void {
   handle('session:create', (projectId, agentId) => sessions.create(projectId, agentId))
   handle('session:open', (id) => sessions.open(id))
   // Não aguardamos o turno inteiro: o progresso chega por `session:event`.
-  handle('session:prompt', (id, text) => sessions.prompt(id, text))
+  handle('session:prompt', (id, text, attachments) => sessions.prompt(id, text, attachments))
   handle('session:cancel', (id) => sessions.cancel(id))
   handle('session:permission', (id, requestId, optionId) =>
     sessions.respondPermission(id, requestId, optionId),

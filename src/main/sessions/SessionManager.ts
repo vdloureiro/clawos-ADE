@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { applyEvent, createChatState, type ChatState } from '@shared/chat'
-import type { AgentId, SessionEvent, SessionSummary } from '@shared/types'
+import type { AgentId, SessionEvent, SessionInfo, SessionSummary } from '@shared/types'
 import { AgentSession } from '../agents/AgentSession'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
 import { materializePlugin } from '../compiler/materialize'
@@ -24,6 +24,10 @@ export interface SessionManagerDeps {
   generatedRoot: string
   /** Envia um evento para o renderer. */
   send: (channel: 'session:event' | 'sessions:changed', payload: unknown) => void
+  /** Avisa o usuário (notificação do SO) que uma sessão terminou ou precisa de aprovação. */
+  notify: (session: SessionInfo, kind: 'finished' | 'permission', detail: string) => void
+  /** Branch git atual da pasta, ou null. */
+  branchOf: (cwd: string) => Promise<string | null>
 }
 
 const NEW_TITLE = 'Nova conversa'
@@ -73,7 +77,7 @@ export class SessionManager {
     return this.live.get(id)!.chat
   }
 
-  prompt(id: string, text: string): void {
+  prompt(id: string, text: string, attachments: string[] = []): void {
     const session = this.requireAgent(id)
     const live = this.live.get(id)!
     if (live.chat.info.title === NEW_TITLE) {
@@ -82,7 +86,7 @@ export class SessionManager {
       this.deps.repo.update(id, { title })
       this.changed(live.chat.info.projectId)
     }
-    void session.prompt(text)
+    void session.prompt(text, attachments)
   }
 
   cancel(id: string): Promise<void> {
@@ -148,6 +152,12 @@ export class SessionManager {
 
     const emit = (event: SessionEvent) => this.handleEvent(summary.id, event)
 
+    void this.deps.branchOf(summary.cwd).then((branch) => {
+      if (branch === summary.branch) return
+      this.deps.repo.update(summary.id, { branch })
+      this.changed(summary.projectId)
+    })
+
     let compiled: CompiledSession
     try {
       compiled = this.compileFor(summary)
@@ -200,6 +210,17 @@ export class SessionManager {
     if (event.type === 'status_change') {
       this.deps.repo.update(id, { status: event.status })
       this.changed(live.chat.info.projectId)
+    }
+    if (event.type === 'permission_request') {
+      this.deps.notify(live.chat.info, 'permission', event.title)
+    }
+    if (event.type === 'turn_end' && event.stopReason !== 'cancelled') {
+      const last = live.chat.items.findLast((i) => i.kind === 'assistant')
+      this.deps.notify(
+        live.chat.info,
+        'finished',
+        last?.kind === 'assistant' ? last.text : 'Turno concluído.',
+      )
     }
     if (event.type === 'turn_end' || event.type === 'error') {
       this.flush(id)

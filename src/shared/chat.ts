@@ -8,7 +8,7 @@ import type {
 } from './types'
 
 export type ChatItem =
-  | { kind: 'user'; id: string; text: string }
+  | { kind: 'user'; id: string; text: string; attachments?: string[] }
   | { kind: 'assistant'; id: string; text: string }
   | { kind: 'thought'; id: string; text: string }
   | { kind: 'tool'; id: string; toolCall: ToolCallView }
@@ -44,8 +44,16 @@ export function applyEvent(state: ChatState, event: SessionEvent): ChatState {
     case 'status_change':
       return { ...state, status: event.status }
 
-    case 'user_message':
-      return appendText(state, 'user', event.id, event.text)
+    case 'user_message': {
+      const next = appendText(state, 'user', event.id, event.text)
+      if (!event.attachments?.length) return next
+      const last = next.items.at(-1)
+      if (last?.kind !== 'user') return next
+      return {
+        ...next,
+        items: [...next.items.slice(0, -1), { ...last, attachments: event.attachments }],
+      }
+    }
     case 'text_delta':
       return appendText(state, 'assistant', event.messageId, event.text)
     case 'thought_delta':

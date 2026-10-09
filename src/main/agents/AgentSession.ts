@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Readable, Writable } from 'node:stream'
 import * as acp from '@agentclientprotocol/sdk'
 import type { AgentId, SessionEvent, SessionStatus } from '@shared/types'
@@ -101,14 +102,27 @@ export class AgentSession {
     }
   }
 
-  async prompt(text: string): Promise<void> {
+  async prompt(text: string, attachments: string[] = []): Promise<void> {
     if (!this.connection || !this.acpSessionId) throw new Error('Sessão ainda não está pronta.')
-    this.emit({ type: 'user_message', id: randomUUID(), text })
+    this.emit({
+      type: 'user_message',
+      id: randomUUID(),
+      text,
+      ...(attachments.length > 0 && { attachments }),
+    })
     this.setStatus('working')
     try {
       const result = await this.connection.agent.request(acp.methods.agent.session.prompt, {
         sessionId: this.acpSessionId,
-        prompt: [{ type: 'text', text }],
+        prompt: <acp.ContentBlock[]>[
+          { type: 'text', text },
+          // Arquivos anexados/mencionados viram links de recurso; o agente lê o conteúdo.
+          ...attachments.map((path) => ({
+            type: 'resource_link',
+            uri: pathToFileURL(path).href,
+            name: basename(path),
+          })),
+        ],
       })
       this.emit({ type: 'turn_end', stopReason: result.stopReason })
       this.setStatus('ready')

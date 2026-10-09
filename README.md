@@ -2,7 +2,7 @@
 
 App desktop open source (MIT) para trabalhar com vários agentes de código de IA — Claude Code, Codex, Gemini e outros — em vários projetos, com uma interface de **chat limpo** e **vários agentes em paralelo** em painéis organizáveis.
 
-> Status: em desenvolvimento (M2 — projetos com configuração isolada). Ainda não é um release.
+> Status: em desenvolvimento (M3 — vários agentes em paralelo, em painéis). Ainda não é um release.
 
 ## Princípios
 

@@ -142,3 +142,22 @@
   padding-left: 0.75rem;
   color: var(--muted-foreground);
 }
+
+/* dockview com a paleta do app (claro/escuro). */
+.clawos-dock .dockview-theme-dark,
+.clawos-dock .dockview-theme-light {
+  --dv-group-view-background-color: var(--background);
+  --dv-tabs-and-actions-container-background-color: var(--sidebar);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--sidebar);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--sidebar);
+  --dv-tab-divider-color: var(--border);
+  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-separator-border: var(--border);
+  --dv-tabs-and-actions-container-height: 34px;
+  --dv-drag-over-background-color: color-mix(in oklch, var(--ring) 30%, transparent);
+}

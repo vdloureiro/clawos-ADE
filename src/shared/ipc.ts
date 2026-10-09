@@ -4,7 +4,14 @@
  */
 import type { ChatState } from './chat'
 import type { ProjectConfig } from './project'
-import type { AgentId, AgentStatus, Project, SessionEvent, SessionSummary } from './types'
+import type {
+  AgentId,
+  AgentStatus,
+  LayoutPreset,
+  Project,
+  SessionEvent,
+  SessionSummary,
+} from './types'
 
 export interface AppInfo {
   name: string
@@ -48,6 +55,14 @@ export interface InvokeChannels {
   'projects:getConfig': { args: [id: string]; result: ProjectConfigResult }
   'projects:saveConfig': { args: [id: string, config: ProjectConfig]; result: void }
   'projects:testMcp': { args: [id: string, serverName: string]; result: McpTestResult }
+  /** Caminhos relativos dos arquivos do projeto (para o `@` do chat). */
+  'projects:files': { args: [id: string]; result: string[] }
+
+  'layouts:get': { args: [projectId: string]; result: string | null }
+  'layouts:save': { args: [projectId: string, json: string]; result: void }
+  'presets:list': { args: []; result: LayoutPreset[] }
+  'presets:save': { args: [name: string, json: string]; result: LayoutPreset }
+  'presets:delete': { args: [id: string]; result: void }
 
   /** Só nomes: valores de segredos nunca chegam ao renderer. */
   'secrets:list': { args: [projectId: string]; result: string[] }
@@ -58,7 +73,10 @@ export interface InvokeChannels {
   'sessions:listAll': { args: []; result: SessionSummary[] }
   'session:create': { args: [projectId: string, agentId?: AgentId]; result: SessionSummary }
   'session:open': { args: [sessionId: string]; result: ChatState }
-  'session:prompt': { args: [sessionId: string, text: string]; result: void }
+  'session:prompt': {
+    args: [sessionId: string, text: string, attachments?: string[]]
+    result: void
+  }
   'session:cancel': { args: [sessionId: string]; result: void }
   'session:permission': {
     args: [sessionId: string, requestId: string, optionId: string | null]
@@ -78,6 +96,8 @@ export interface EventChannels {
   'session:event': { sessionId: string; event: SessionEvent }
   /** A lista de sessões de um projeto mudou (nova, título, status). */
   'sessions:changed': { projectId: string }
+  /** Clique numa notificação: trazer esta sessão para o foco. */
+  'session:focus': { projectId: string; sessionId: string }
   'terminal:data': { terminalId: string; data: string }
   'terminal:exit': { terminalId: string; exitCode: number }
 }
@@ -90,6 +110,7 @@ export type EventChannel = keyof EventChannels
 export const EVENT_CHANNELS: readonly EventChannel[] = [
   'session:event',
   'sessions:changed',
+  'session:focus',
   'terminal:data',
   'terminal:exit',
 ]
@@ -99,4 +120,6 @@ export interface ClawosApi {
   invoke<C extends InvokeChannel>(channel: C, ...args: InvokeArgs<C>): Promise<InvokeResult<C>>
   /** Assina um evento do main. Retorna a função para cancelar a assinatura. */
   on<C extends EventChannel>(channel: C, listener: (payload: EventChannels[C]) => void): () => void
+  /** Caminho absoluto de um arquivo solto via drag-and-drop. */
+  pathForFile(file: File): string
 }

@@ -6,6 +6,7 @@ import { ProjectSettings } from '@/components/settings/ProjectSettings'
 import { ProjectSidebar } from '@/components/sidebar/ProjectSidebar'
 import { Button } from '@/components/ui/button'
 import { Workspace } from '@/components/workspace/Workspace'
+import { openInDock } from '@/lib/dock'
 import { cn } from '@/lib/utils'
 import { useAgentsStore } from '@/stores/agents'
 import { useProjectsStore } from '@/stores/projects'
@@ -31,7 +32,15 @@ export function App() {
     void useAgentsStore.getState().refresh()
     void useProjectsStore.getState().load()
     void useSessionsStore.getState().loadAll()
-    return subscribeToSessionEvents()
+    const offSessions = subscribeToSessionEvents()
+    // Clique numa notificação do SO: leva à sessão que terminou ou pede aprovação.
+    const offFocus = window.clawos.on('session:focus', ({ projectId, sessionId }) => {
+      void openInDock(projectId, sessionId)
+    })
+    return () => {
+      offSessions()
+      offFocus()
+    }
   }, [])
 
   return (
@@ -60,10 +69,7 @@ export function App() {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <div className="h-11 shrink-0 border-b [-webkit-app-region:drag]" />
-        <div className="min-h-0 flex-1">
-          <Workspace />
-        </div>
+        <Workspace />
       </main>
 
       <CommandPalette />

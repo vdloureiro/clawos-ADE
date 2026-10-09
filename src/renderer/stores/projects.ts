@@ -14,6 +14,8 @@ function readActive(): string | null {
 interface ProjectsState {
   projects: Project[]
   activeId: string | null
+  /** Projetos já abertos nesta execução (seus docks ficam montados). */
+  visited: string[]
   load: () => Promise<void>
   select: (id: string | null) => void
   add: () => Promise<Project | null>
@@ -25,16 +27,20 @@ interface ProjectsState {
 export const useProjectsStore = create<ProjectsState>((set, get) => ({
   projects: [],
   activeId: null,
+  visited: [],
 
   load: async () => {
     const projects = await window.clawos.invoke('projects:list')
     const saved = readActive()
     const activeId = projects.some((p) => p.id === saved) ? saved : (projects[0]?.id ?? null)
-    set({ projects, activeId })
+    set({ projects, activeId, visited: activeId ? [activeId] : [] })
   },
 
   select: (id) => {
-    set({ activeId: id })
+    set((s) => ({
+      activeId: id,
+      visited: id && !s.visited.includes(id) ? [...s.visited, id] : s.visited,
+    }))
     try {
       if (id) localStorage.setItem(ACTIVE_KEY, id)
     } catch {

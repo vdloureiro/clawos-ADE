@@ -1,87 +1,52 @@
-import { FolderPlus, MessageSquarePlus, Settings } from 'lucide-react'
-import { ChatPanel } from '@/components/chat/ChatPanel'
+import { FolderPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAgentsStore } from '@/stores/agents'
 import { useActiveProject, useProjectsStore } from '@/stores/projects'
-import { useSessionsStore } from '@/stores/sessions'
-import { useUiStore } from '@/stores/ui'
+import { DockWorkspace } from './DockWorkspace'
+import { WorkspaceToolbar } from './WorkspaceToolbar'
 
-/** Área principal: conversa em foco do projeto ativo (multi-painel chega no M3). */
+/**
+ * Área principal. Cada projeto visitado mantém seu dock montado; trocar de projeto só
+ * alterna a visibilidade, então as sessões e os painéis continuam exatamente como estavam.
+ */
 export function Workspace() {
   const project = useActiveProject()
+  const projects = useProjectsStore((s) => s.projects)
   const add = useProjectsStore((s) => s.add)
-  const { activeByProject, summaries, create, open } = useSessionsStore()
-  const openProjectSettings = useUiStore((s) => s.openProjectSettings)
-  const setGlobalSettingsOpen = useUiStore((s) => s.setGlobalSettingsOpen)
-  const claude = useAgentsStore((s) => s.statuses.find((a) => a.id === 'claude'))
-  const ready = claude?.installed && claude.loggedIn !== false
+  const visited = useProjectsStore((s) => s.visited)
+  const mounted = visited.filter((id) => projects.some((p) => p.id === id))
 
-  if (!project) {
-    return (
-      <EmptyState title="Clawos" text="Adicione a pasta de um projeto para começar.">
-        <Button onClick={() => void add()}>
-          <FolderPlus /> Adicionar projeto
-        </Button>
-      </EmptyState>
-    )
-  }
-
-  const sessionId = activeByProject[project.id]
-  if (sessionId) return <ChatPanel key={sessionId} sessionId={sessionId} />
-
-  const recent = (summaries[project.id] ?? []).slice(0, 5)
   return (
-    <EmptyState title={project.name} text={project.path}>
-      <div className="flex gap-2">
-        <Button onClick={() => void create(project.id)} disabled={!ready}>
-          <MessageSquarePlus /> Nova conversa
-        </Button>
-        <Button variant="outline" onClick={() => openProjectSettings(project.id)}>
-          <Settings /> Configurações
-        </Button>
+    <div className="flex h-full flex-col">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b px-3 [-webkit-app-region:drag]">
+        {project && (
+          <>
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ background: project.color }}
+              />
+              <span className="truncate font-medium">{project.name}</span>
+            </div>
+            <WorkspaceToolbar project={project} />
+          </>
+        )}
       </div>
-      {!ready && claude && (
-        <button
-          type="button"
-          className="text-xs text-amber-600 underline-offset-2 hover:underline"
-          onClick={() => setGlobalSettingsOpen(true)}
-        >
-          {claude.installed ? 'Entre no Claude para começar.' : 'Instale o Claude para começar.'}
-        </button>
-      )}
-      {recent.length > 0 && (
-        <div className="mt-4 w-72 text-left">
-          <div className="mb-1 text-xs text-muted-foreground">Recentes</div>
-          {recent.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => void open(s.id, project.id)}
-              className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-accent/50"
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-      )}
-    </EmptyState>
-  )
-}
-
-function EmptyState({
-  title,
-  text,
-  children,
-}: {
-  title: string
-  text: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      <p className="max-w-md truncate text-sm text-muted-foreground">{text}</p>
-      {children}
+      <div className="relative min-h-0 flex-1">
+        {mounted.map((id) => (
+          <DockWorkspace key={id} projectId={id} visible={id === project?.id} />
+        ))}
+        {!project && (
+          <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+            <h1 className="text-2xl font-semibold">Clawos</h1>
+            <p className="text-sm text-muted-foreground">
+              Adicione a pasta de um projeto para começar.
+            </p>
+            <Button onClick={() => void add()}>
+              <FolderPlus /> Adicionar projeto
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

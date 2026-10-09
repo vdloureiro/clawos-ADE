@@ -78,6 +78,9 @@ importers:
       diff:
         specifier: ^9.0.0
         version: 9.0.0
+      dockview-react:
+        specifier: 8.4.1
+        version: 8.4.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       electron:
         specifier: ^44.7.0
         version: 44.7.0
@@ -1804,6 +1807,18 @@ packages:
 
   dmg-builder@26.15.3:
     resolution: {integrity: sha512-O3zJUFUYHJKgzPqioHxfxzBzlSC1eXCSr79gMSBKBP5AgjjpmrydMsMLotEg9fAJF36vdUncb+4ndRNxoPdlSQ==}
+
+  dockview-core@8.4.1:
+    resolution: {integrity: sha512-LcvhGwmK/Q1tFDEPkiBpkLIYctimmu8JJHgG5yhIXwyf9IvWQkJa3EG7/a1NKUS2Q8w82uoYZTL+c84/zpQUjg==}
+
+  dockview-react@8.4.1:
+    resolution: {integrity: sha512-6C5FV5Y0n0S3IljnKNn9stLm45SkbzZzlLnV2286sm1W2cnZXPmqDuZOWq3wWj9tZ2MvuV1q0c9hLT9NT6H+NQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  dockview@8.4.1:
+    resolution: {integrity: sha512-6CrXwfDkhTL0N8stgnur8E/WYFZqltAtHaAV96Ia9lA1JGWwWMw5MWZznWckIMocS2Il5rgaqP/i/l2ltYaTqw==}
 
   dotenv-expand@11.0.7:
     resolution: {integrity: sha512-zIHwmZPRshsCdpMDyVsqGmgyP0yT8GAgXUnkdAoJisxvf33k7yO6OuoKmcTGuXPWSsm8Oh88nZicRLA9Y0rUeA==}
@@ -5164,6 +5179,18 @@ snapshots:
     transitivePeerDependencies:
       - electron-builder-squirrel-windows
       - supports-color
+
+  dockview-core@8.4.1: {}
+
+  dockview-react@8.4.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+    dependencies:
+      dockview: 8.4.1
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+
+  dockview@8.4.1:
+    dependencies:
+      dockview-core: 8.4.1
 
   dotenv-expand@11.0.7:
     dependencies:
