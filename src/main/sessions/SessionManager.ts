@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { applyEvent, createChatState, type ChatState } from '@shared/chat'
 import type { AgentId, SessionEvent, SessionInfo, SessionSummary } from '@shared/types'
 import { AgentSession } from '../agents/AgentSession'
+import type { GlobalMcp } from '../agents/registry'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
 import { materialize } from '../compiler/materialize'
 import type { ProjectManager } from '../projects/ProjectManager'
@@ -29,7 +30,7 @@ export interface SessionManagerDeps {
   /** Branch git atual da pasta, ou null. */
   branchOf: (cwd: string) => Promise<string | null>
   /** MCPs globais do usuário no agente (o compilador os desliga na sessão). */
-  globalMcpNames: (agentId: AgentId) => Promise<string[]>
+  globalMcps: (agentId: AgentId) => Promise<GlobalMcp[]>
 }
 
 const NEW_TITLE = 'Nova conversa'
@@ -183,7 +184,7 @@ export class SessionManager {
 
   private async compileFor(summary: SessionSummary): Promise<CompiledSession> {
     const project = this.deps.projects.get(summary.projectId)
-    const globalMcpNames = await this.deps.globalMcpNames(summary.agentId)
+    const globalMcp = await this.deps.globalMcps(summary.agentId)
     const { config, error } = this.deps.projects.readConfig(project.path)
     if (error) throw new Error(error)
     const compiled = compile({
@@ -199,7 +200,7 @@ export class SessionManager {
         }
       },
       generatedDir: join(this.deps.generatedRoot, summary.id),
-      globalMcpNames,
+      globalMcp,
     })
     materialize(join(this.deps.generatedRoot, summary.id), compiled)
     return compiled

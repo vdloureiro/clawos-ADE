@@ -11,7 +11,7 @@ function ctx(config: ProjectConfig, extra: Partial<CompileContext> = {}): Compil
     secret: (name) => ({ supabase_token: 'tok-123' })[name] ?? null,
     readText: () => null,
     generatedDir: '/data/gen/s1',
-    globalMcpNames: [],
+    globalMcp: [],
     ...extra,
   }
 }
@@ -137,15 +137,22 @@ describe('ConfigCompiler — Codex', () => {
     const result = compile(
       ctx(
         { mcpServers: { ...supabase, api: { type: 'http', url: 'https://x/mcp' } } },
-        { agentId: 'codex', globalMcpNames: ['meta_ads', 'node_repl'] },
+        {
+          agentId: 'codex',
+          globalMcp: [
+            { name: 'meta_ads', disable: { url: 'https://m/mcp', enabled: false } },
+            { name: 'node_repl', disable: { command: 'node', args: [], enabled: false } },
+          ],
+        },
       ),
     )
     expect(result.mcpServers).toEqual([])
     expect(result.env).not.toHaveProperty('CODEX_HOME')
     expect(codexConfig(result)).toEqual({
+      features: { apps: false },
       mcp_servers: {
-        meta_ads: { enabled: false },
-        node_repl: { enabled: false },
+        meta_ads: { url: 'https://m/mcp', enabled: false },
+        node_repl: { command: 'node', args: [], enabled: false },
         supabase: {
           command: 'npx',
           args: ['-y', '@supabase/mcp-server-supabase', '--token=tok-123'],
@@ -158,7 +165,13 @@ describe('ConfigCompiler — Codex', () => {
 
   it('MCP do projeto com o mesmo nome de um global prevalece', () => {
     const result = compile(
-      ctx({ mcpServers: supabase }, { agentId: 'codex', globalMcpNames: ['supabase'] }),
+      ctx(
+        { mcpServers: supabase },
+        {
+          agentId: 'codex',
+          globalMcp: [{ name: 'supabase', disable: { command: 'g', enabled: false } }],
+        },
+      ),
     )
     expect(
       (codexConfig(result)['mcp_servers'] as Record<string, unknown>)['supabase'],

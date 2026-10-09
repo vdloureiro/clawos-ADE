@@ -152,3 +152,12 @@ describe('describeError', () => {
     expect(describeError(new Error('falhou'))).toBe('falhou')
   })
 })
+
+describe('describeError com data em texto', () => {
+  it('usa o texto de data (formato do codex-acp)', async () => {
+    const { describeError } = await import('./AgentSession')
+    expect(
+      describeError({ code: -32603, message: 'Internal error', data: 'invalid transport\n' }),
+    ).toBe('invalid transport')
+  })
+})

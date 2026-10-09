@@ -12,6 +12,7 @@ export interface SendPayload {
 
 export function ChatInput({
   disabled,
+  unavailable = false,
   working,
   cwd,
   loadFiles,
@@ -19,6 +20,8 @@ export function ChatInput({
   onStop,
 }: {
   disabled: boolean
+  /** Sessão em erro ou encerrada (e não apenas conectando). */
+  unavailable?: boolean
   working: boolean
   cwd: string
   loadFiles: () => Promise<string[]>
@@ -171,9 +174,11 @@ export function ChatInput({
             onKeyDown={onKeyDown}
             onBlur={() => setMention(null)}
             placeholder={
-              disabled
-                ? 'Conectando ao agente…'
-                : 'Peça algo ao agente — @ menciona arquivos, arraste para anexar'
+              unavailable
+                ? 'Sessão indisponível — veja o erro acima'
+                : disabled
+                  ? 'Conectando ao agente…'
+                  : 'Peça algo ao agente — @ menciona arquivos, arraste para anexar'
             }
             rows={1}
             className="field-sizing-content max-h-48 min-h-6 flex-1 resize-none bg-transparent text-sm outline-none select-text placeholder:text-muted-foreground"

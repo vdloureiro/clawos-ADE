@@ -153,6 +153,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
 
       <ChatInput
         disabled={status === 'starting' || status === 'error' || status === 'closed'}
+        unavailable={status === 'error' || status === 'closed'}
         working={working}
         cwd={info.cwd}
         loadFiles={() => window.clawos.invoke('projects:files', info.projectId)}

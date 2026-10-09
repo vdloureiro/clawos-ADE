@@ -32,14 +32,25 @@ describe('registry', () => {
 })
 
 describe('parseCodexMcpList', () => {
-  it('lista só os servidores habilitados', async () => {
+  it('gera entradas de desligamento com transporte, sem env', async () => {
     const { parseCodexMcpList } = await import('./registry')
     const out = JSON.stringify([
-      { name: 'meta_ads', enabled: true },
-      { name: 'codex_app', enabled: false },
-      { name: 'node_repl' },
+      {
+        name: 'node_repl',
+        enabled: true,
+        transport: { type: 'stdio', command: '/x/node', args: ['s.js'], env: { TOKEN: 'segredo' } },
+      },
+      {
+        name: 'meta_ads',
+        enabled: true,
+        transport: { type: 'streamable_http', url: 'https://m/mcp', http_headers: { A: 'b' } },
+      },
+      { name: 'codex_app', enabled: false, transport: { type: 'stdio', command: 'y' } },
     ])
-    expect(parseCodexMcpList(out)).toEqual(['meta_ads', 'node_repl'])
+    expect(parseCodexMcpList(out)).toEqual([
+      { name: 'node_repl', disable: { command: '/x/node', args: ['s.js'], enabled: false } },
+      { name: 'meta_ads', disable: { url: 'https://m/mcp', enabled: false } },
+    ])
     expect(parseCodexMcpList('erro')).toEqual([])
   })
 })

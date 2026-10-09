@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import type { AgentId, AgentStatus } from '@shared/types'
-import { AGENTS, type AgentDefinition } from './registry'
+import { AGENTS, type AgentDefinition, type GlobalMcp } from './registry'
 import { getShellEnv, which } from './shellEnv'
 
 interface RunResult {
@@ -82,8 +82,8 @@ export async function resolveCli(id: AgentId): Promise<string> {
   return path
 }
 
-/** Nomes dos MCPs globais do usuário neste agente (vazio se não houver como listar). */
-export async function globalMcpNames(id: AgentId): Promise<string[]> {
+/** MCPs globais do usuário neste agente (vazio se não houver como listar). */
+export async function globalMcps(id: AgentId): Promise<GlobalMcp[]> {
   const agent = AGENTS[id]
   if (!agent.globalMcp) return []
   const cliPath = await which(agent.cli)

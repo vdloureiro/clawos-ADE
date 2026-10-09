@@ -272,7 +272,11 @@ export class AgentSession {
 
   private fail(error: unknown): void {
     if (this.closing) return
-    this.emit({ type: 'error', message: describeError(error) })
+    let message = describeError(error)
+    // -32000 = auth_required no ACP: acrescenta como resolver neste agente.
+    if ((error as { code?: unknown })?.code === -32000)
+      message += `\n\n${getAgent(this.agentId).authHelp}`
+    this.emit({ type: 'error', message })
     this.setStatus('error')
   }
 }
@@ -281,6 +285,7 @@ export class AgentSession {
 export function describeError(error: unknown): string {
   if (error && typeof error === 'object') {
     const { message, data } = error as { message?: unknown; data?: unknown }
+    if (typeof data === 'string' && data.trim()) return data.trim()
     const details =
       data && typeof data === 'object' && 'details' in data
         ? String((data as { details: unknown }).details)

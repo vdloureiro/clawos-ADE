@@ -8,6 +8,7 @@ import {
   type ProjectConfig,
 } from '@shared/project'
 import type { AgentId } from '@shared/types'
+import type { GlobalMcp } from '../agents/registry'
 
 /**
  * Traduz `project.yaml` para o que cada agente entende, no momento de abrir uma sessão.
@@ -27,7 +28,7 @@ export interface CompileContext {
   /** Diretório fora do repositório onde o Clawos gera arquivos desta sessão. */
   generatedDir: string
   /** MCPs configurados globalmente pelo usuário neste agente (para desligar). */
-  globalMcpNames: string[]
+  globalMcp: GlobalMcp[]
 }
 
 export interface GeneratedLink {
@@ -145,14 +146,15 @@ function compileClaude(ctx: CompileContext): CompiledSession {
  * em `CODEX_HOME` — trocar o CODEX_HOME deslogaria o usuário. Em vez disso, toda a
  * configuração vai por `CODEX_CONFIG` (override por sessão do adaptador): MCPs do projeto
  * e `enabled = false` para cada MCP global. Os MCPs ACP ficam vazios de propósito, pois
- * o adaptador sobrescreveria `mcp_servers` inteiro com eles.
+ * o adaptador sobrescreveria `mcp_servers` inteiro com eles. Os conectores da conta
+ * ChatGPT (feature `apps`) também são desligados.
  */
 function compileCodex(ctx: CompileContext): CompiledSession {
   const result = empty()
   const servers = resolvedMcpServers(ctx)
 
   const mcp: Record<string, unknown> = {}
-  for (const name of ctx.globalMcpNames) mcp[name] = { enabled: false }
+  for (const global of ctx.globalMcp) mcp[global.name] = global.disable
   for (const [name, server] of servers) {
     if (server.type === 'sse')
       throw new Error(`O Codex não suporta MCP via SSE ("${name}"). Use http ou stdio.`)
@@ -161,7 +163,8 @@ function compileCodex(ctx: CompileContext): CompiledSession {
       : { command: server.command, args: server.args ?? [], env: server.env ?? {} }
   }
 
-  const config: Record<string, unknown> = { mcp_servers: mcp }
+  // `apps` injeta os conectores da conta ChatGPT como um MCP extra (codex_apps).
+  const config: Record<string, unknown> = { features: { apps: false }, mcp_servers: mcp }
 
   // AGENTS.md é nativo; outro arquivo de instruções vira developer_instructions.
   const instructions = customInstructions(ctx, 'AGENTS.md')

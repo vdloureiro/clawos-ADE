@@ -72,6 +72,18 @@ Alternativa: rodar via `npx` com versão fixada, como faz o [registro ACP](#6-re
 - **D2:** Codex com mescla de MCPs globais e aviso na UI (M4).
 - **D3:** só os adaptadores JS vão embutidos, apontando para o CLI do usuário (`CLAUDE_CODE_EXECUTABLE`). O binário nativo opcional do Claude Agent SDK fica fora do pacote (`electron-builder.yml`).
 
+## 🔬 Verificado na prática no M4 (2026-10-09)
+
+- **Codex — isolamento sem tocar no `CODEX_HOME`:** o adaptador mescla `CODEX_CONFIG` na config de cada sessão. O Clawos envia por ali os MCPs do projeto **e** uma entrada `enabled = false` para cada MCP global listado por `codex mcp list --json` (inclusive os que vêm de plugins do app do Codex). Detalhes que custaram caro:
+  - a entrada de desligamento precisa de um transporte válido (`command` ou `url`), senão o Codex rejeita a config ("invalid transport");
+  - os MCPs **não** podem ir pelo `session/new` do ACP: o adaptador substituiria a tabela `mcp_servers` inteira e as entradas de desligamento sumiriam;
+  - os conectores da conta ChatGPT entram como um MCP extra (`codex_apps`), controlado pela feature `apps` → `features.apps = false`;
+  - `developer_instructions` existe e recebe instruções extras; skills fora de `.agents/skills` entram via `additionalDirectories` (o adaptador lê `<dir>/.agents/skills`).
+  - Resultado provado: a sessão Codex de um projeto enxerga só o MCP do projeto, sem `meta_ads`, `traffic_roas`, `node_repl`, plugins ou conectores — e o login do ChatGPT continua intacto.
+- **Gemini — login com conta Google descontinuado:** ao autenticar via ACP (`oauth-personal`) o Gemini CLI 0.63.0 responde _"This client is no longer supported for Gemini Code Assist for individuals. To continue using Gemini, please migrate to the Antigravity suite of products"_. Só funcionam API key (AI Studio), Vertex ou gateway. **Diverge do plano** (assinatura Google via CLI).
+- **Gemini — isolamento:** `--allowed-mcp-server-names` filtra todos os servidores (sessão, settings e extensões). Lista vazia = sem filtro, então sem MCPs no projeto o Clawos passa um nome sentinela. Skills só de `.agents/skills`/`.gemini/skills` do projeto ou do usuário (sem pasta extra). **Não verificado na prática** por falta de autenticação.
+- **Retomada:** o Gemini anuncia `loadSession` mas não `session/resume`; o Clawos usa `session/load` e descarta o histórico reenviado (a UI já o tem do SQLite).
+
 ## 🔬 Verificado na prática no M2 (2026-10-09)
 
 - **Isolamento de MCPs do Claude:** `session/new` com `_meta.claudeCode.options.strictMcpConfig: true` + `settingSources: ['project','local']` → a sessão enxerga **só** os MCPs do projeto (nenhum MCP global, de `.mcp.json` ou conector claude.ai). Provado com dois projetos e MCPs distintos.

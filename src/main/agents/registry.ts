@@ -20,6 +20,8 @@ export interface AgentDefinition {
   loginArgs: string[]
   installHint: string
   installUrl: string
+  /** Como resolver quando o agente exige autenticação (erro ACP `auth_required`). */
+  authHelp: string
   acp:
     | {
         kind: 'adapter'
@@ -33,7 +35,14 @@ export interface AgentDefinition {
    * Lista os nomes dos MCPs configurados globalmente pelo usuário, para o compilador
    * desligá-los na sessão. Ausente quando o agente já isola por outro meio.
    */
-  globalMcp?: { args: string[]; parse: (stdout: string) => string[] }
+  globalMcp?: { args: string[]; parse: (stdout: string) => GlobalMcp[] }
+}
+
+/** MCP global do usuário e a entrada de config que o desliga na sessão. */
+export interface GlobalMcp {
+  name: string
+  /** Entrada válida (com transporte) e `enabled: false`; sem env/headers, que podem ter segredos. */
+  disable: Record<string, unknown>
 }
 
 export const AGENTS: Record<AgentId, AgentDefinition> = {
@@ -46,6 +55,7 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     loginArgs: ['auth', 'login'],
     installHint: 'curl -fsSL https://claude.ai/install.sh | bash',
     installUrl: 'https://code.claude.com/docs/en/setup',
+    authHelp: 'Entre no Claude pelo botão Entrar em Configurações (roda `claude auth login`).',
     acp: {
       kind: 'adapter',
       module: '@agentclientprotocol/claude-agent-acp/dist/index.js',
@@ -61,6 +71,7 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     loginArgs: ['login'],
     installHint: 'npm install -g @openai/codex',
     installUrl: 'https://developers.openai.com/codex/cli',
+    authHelp: 'Entre no Codex pelo botão Entrar em Configurações (roda `codex login`).',
     acp: {
       kind: 'adapter',
       module: '@agentclientprotocol/codex-acp/dist/index.js',
@@ -79,6 +90,9 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     loginArgs: [],
     installHint: 'npm install -g @google/gemini-cli',
     installUrl: 'https://github.com/google-gemini/gemini-cli',
+    // O login com conta Google pessoal foi descontinuado no Gemini CLI (out/2026).
+    authHelp:
+      'O Gemini CLI precisa de uma API key: crie uma em https://aistudio.google.com/apikey e defina GEMINI_API_KEY no seu ambiente (ou em ~/.gemini/.env). O Clawos não guarda essa chave.',
     acp: { kind: 'native', args: ['--acp'] },
   },
 }
@@ -89,14 +103,32 @@ export function getAgent(id: AgentId): AgentDefinition {
   return agent
 }
 
-/** `codex mcp list --json` → nomes dos servidores habilitados. */
-export function parseCodexMcpList(stdout: string): string[] {
+/**
+ * `codex mcp list --json` → servidores habilitados (de config.toml e de plugins). O override
+ * precisa de um transporte válido, senão o Codex rejeita a config ("invalid transport").
+ */
+export function parseCodexMcpList(stdout: string): GlobalMcp[] {
+  interface Entry {
+    name?: unknown
+    enabled?: unknown
+    transport?: { type?: string; command?: string; args?: string[]; url?: string }
+  }
+  let list: Entry[]
   try {
-    const list = JSON.parse(stdout) as { name?: unknown; enabled?: unknown }[]
-    return list
-      .filter((s) => typeof s.name === 'string' && s.enabled !== false)
-      .map((s) => s.name as string)
+    list = JSON.parse(stdout) as Entry[]
   } catch {
     return []
   }
+  const result: GlobalMcp[] = []
+  for (const entry of list) {
+    if (typeof entry.name !== 'string' || entry.enabled === false) continue
+    const t = entry.transport ?? {}
+    if (t.url) result.push({ name: entry.name, disable: { url: t.url, enabled: false } })
+    else if (t.command)
+      result.push({
+        name: entry.name,
+        disable: { command: t.command, args: t.args ?? [], enabled: false },
+      })
+  }
+  return result
 }

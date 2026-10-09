@@ -2,7 +2,7 @@
 
 App desktop open source (MIT) para trabalhar com vários agentes de código de IA — Claude Code, Codex, Gemini e outros — em vários projetos, com uma interface de **chat limpo** e **vários agentes em paralelo** em painéis organizáveis.
 
-> Status: em desenvolvimento (M3 — vários agentes em paralelo, em painéis). Ainda não é um release.
+> Status: em desenvolvimento (M4 — Claude, Codex e Gemini). Ainda não é um release.
 
 ## Princípios
 
@@ -14,7 +14,10 @@ App desktop open source (MIT) para trabalhar com vários agentes de código de I
 ## Requisitos para usar
 
 - **Claude:** o [CLI oficial](https://code.claude.com/docs/en/setup) instalado e logado (`claude auth login`). O Clawos detecta automaticamente e oferece um botão **Entrar** que roda esse comando. Ele usa a mesma conta que você usa no terminal ou no VS Code.
-- Codex e Gemini chegam no M4.
+- **Codex:** CLI oficial (`npm install -g @openai/codex`) logado com `codex login` (conta ChatGPT ou API key). Se você usa o app do Codex, o CLI reaproveita o mesmo login.
+- **Gemini:** CLI oficial (`npm install -g @google/gemini-cli`). O login com conta Google pessoal foi descontinuado pelo Google; use uma API key do [AI Studio](https://aistudio.google.com/apikey) em `GEMINI_API_KEY` (no ambiente ou em `~/.gemini/.env`). O Clawos não guarda essa chave.
+
+Em todos os agentes, as sessões de um projeto enxergam **somente** os MCPs do projeto — inclusive no Codex, cujos MCPs globais, plugins e conectores do ChatGPT são desligados por sessão sem alterar sua configuração.
 
 > **Sobre contas claude.ai:** o Clawos conversa com o Claude através do adaptador ACP oficial e do seu CLI, com o login que você mesmo fez. A Anthropic não permite que produtos de terceiros _ofereçam_ login claude.ai sem aprovação prévia ([Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview)); por isso o Clawos nunca implementa login próprio. Use conforme os termos da sua conta.
 
@@ -41,6 +44,12 @@ agents:
 - As sessões de um projeto enxergam **somente** os MCPs e skills dele. MCPs globais do usuário nunca são carregados.
 - `${secret:nome}` vem dos segredos do projeto, guardados com a criptografia do sistema (`safeStorage`). Nunca vão para o YAML.
 - `inheritUserConfig: true` também carrega a sua configuração global do Claude (`~/.claude`: CLAUDE.md, skills, permissões).
+
+## Adicionando um agente compatível com ACP
+
+1. Inclua o id e os dados de exibição em `src/shared/agents.ts`.
+2. Descreva em `src/main/agents/registry.ts` o CLI, os comandos de versão/status/login e como iniciar em modo ACP (`native` com argumentos, ou `adapter` com um pacote npm).
+3. Opcional: um compilador em `src/main/compiler/ConfigCompiler.ts` para traduzir skills, instruções e isolamento de MCPs. Sem ele, os MCPs do projeto vão pelo `session/new` do ACP.
 
 ## Desenvolvimento
 
