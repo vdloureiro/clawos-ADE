@@ -65,6 +65,10 @@ export function registerIpcHandlers(): void {
     const folder = path ?? (await pickFolder('Adicionar projeto'))
     return folder ? projects.add(folder) : null
   })
+  handle('projects:inspect', (path) => projects.inspect(path))
+  handle('projects:create', (input) =>
+    projects.create(input, (id, name, value) => secrets.set(id, name, value)),
+  )
   handle('projects:update', (id, patch) => projects.update(id, patch))
   handle('projects:reorder', (ids) => projects.reorder(ids))
   handle('projects:remove', (id) => {

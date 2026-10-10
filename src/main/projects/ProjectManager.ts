@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import type Database from 'better-sqlite3'
 import { parse, stringify } from 'yaml'
 import { projectConfigSchema, type ProjectConfig } from '@shared/project'
-import { PROJECT_COLORS, type AgentId, type Project } from '@shared/types'
+import {
+  PROJECT_COLORS,
+  type AgentId,
+  type FolderInspection,
+  type NewProjectInput,
+  type Project,
+} from '@shared/types'
 
 interface ProjectRow {
   id: string
@@ -32,6 +38,10 @@ function toProject(row: ProjectRow): Project {
 
 export const CONFIG_DIR = '.clawos'
 export const CONFIG_FILE = 'project.yaml'
+
+/** Pastas onde agentes procuram skills dentro de um projeto. */
+const SKILL_DIRS = ['.agents/skills', '.claude/skills', '.clawos/skills', '.gemini/skills']
+const INSTRUCTION_FILES = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md']
 
 export interface ConfigReadResult {
   config: ProjectConfig
@@ -105,6 +115,52 @@ export class ProjectManager {
 
   touch(id: string): void {
     this.db.prepare('UPDATE projects SET last_opened_at = ? WHERE id = ?').run(Date.now(), id)
+  }
+
+  /** O que já existe numa pasta, para o assistente de novo projeto. */
+  inspect(path: string): FolderInspection {
+    if (!existsSync(path) || !statSync(path).isDirectory())
+      throw new Error(`Pasta não encontrada: ${path}`)
+    const existing = this.db.prepare('SELECT * FROM projects WHERE path = ?').get(path) as
+      ProjectRow | undefined
+    const config = this.readConfig(path)
+    const skills: string[] = []
+    for (const dir of SKILL_DIRS) {
+      const full = join(path, dir)
+      if (!existsSync(full)) continue
+      for (const entry of readdirSync(full, { withFileTypes: true })) {
+        if (entry.isDirectory() && existsSync(join(full, entry.name, 'SKILL.md')))
+          skills.push(`./${dir}/${entry.name}`)
+      }
+    }
+    return {
+      path,
+      suggestedName: config.config.name || basename(path),
+      isGit: existsSync(join(path, '.git')),
+      alreadyAdded: existing ? toProject(existing) : null,
+      config,
+      instructionFiles: INSTRUCTION_FILES.filter((f) => existsSync(join(path, f))),
+      skills,
+    }
+  }
+
+  /**
+   * Cria (ou atualiza, se a pasta já estiver na lista) um projeto com a configuração
+   * inicial do assistente. A configuração é validada antes de qualquer gravação.
+   */
+  create(
+    input: NewProjectInput,
+    saveSecret: (projectId: string, name: string, value: string) => void,
+  ): Project {
+    const config = projectConfigSchema.parse(input.config)
+    const project = this.add(input.path)
+    const updated = this.update(project.id, { name: input.name, color: input.color })
+    if (input.writeConfig) this.writeConfig(project.id, config)
+    for (const [name, value] of Object.entries(input.secrets)) saveSecret(project.id, name, value)
+    this.db
+      .prepare('UPDATE projects SET default_agent = ? WHERE id = ?')
+      .run(config.defaultAgent ?? 'claude', project.id)
+    return { ...updated, defaultAgent: config.defaultAgent ?? 'claude' }
   }
 
   // -------------------------------------------------------------------------

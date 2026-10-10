@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Project } from '@shared/types'
+import { useUiStore } from './ui'
 
 const ACTIVE_KEY = 'clawos.activeProject'
 
@@ -18,7 +19,10 @@ interface ProjectsState {
   visited: string[]
   load: () => Promise<void>
   select: (id: string | null) => void
-  add: () => Promise<Project | null>
+  /** Abre o assistente de novo projeto. */
+  add: () => void
+  /** Recarrega a lista após o assistente criar um projeto e o seleciona. */
+  created: (project: Project) => Promise<void>
   update: (id: string, patch: { name?: string; color?: string }) => Promise<void>
   reorder: (ids: string[]) => Promise<void>
   remove: (id: string) => Promise<void>
@@ -48,13 +52,12 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     }
   },
 
-  add: async () => {
-    const project = await window.clawos.invoke('projects:add')
-    if (!project) return null
+  add: () => useUiStore.getState().setNewProjectOpen(true),
+
+  created: async (project) => {
     const projects = await window.clawos.invoke('projects:list')
     set({ projects })
     get().select(project.id)
-    return project
   },
 
   update: async (id, patch) => {

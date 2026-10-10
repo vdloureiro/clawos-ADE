@@ -414,7 +414,7 @@ function McpRow({
   )
 }
 
-function McpEditor({
+export function McpEditor({
   form,
   error,
   onChange,

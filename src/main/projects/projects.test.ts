@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -93,5 +93,87 @@ describe('SecretStore', () => {
     const a = new ProjectManager(db).add(tempDir())
     const secrets = new SecretStore(db, { ...cipher, isAvailable: () => false })
     expect(() => secrets.set(a.id, 'x', 'y')).toThrow(/indisponível/)
+  })
+})
+
+describe('assistente de novo projeto', () => {
+  it('inspect encontra instruções, skills e configuração existentes', () => {
+    const manager = new ProjectManager(openDatabase(':memory:'))
+    const dir = tempDir()
+    writeFileSync(join(dir, 'CLAUDE.md'), '# regras')
+    mkdirSync(join(dir, '.agents/skills/revisao'), { recursive: true })
+    writeFileSync(join(dir, '.agents/skills/revisao/SKILL.md'), '---\nname: revisao\n---')
+    mkdirSync(join(dir, '.claude/skills/sem-skill-md'), { recursive: true })
+    mkdirSync(join(dir, '.clawos'))
+    writeFileSync(join(dir, '.clawos/project.yaml'), 'name: Loja\n')
+
+    const result = manager.inspect(dir)
+    expect(result).toMatchObject({
+      suggestedName: 'Loja',
+      isGit: false,
+      alreadyAdded: null,
+      instructionFiles: ['CLAUDE.md'],
+      skills: ['./.agents/skills/revisao'],
+    })
+    expect(result.config.exists).toBe(true)
+  })
+
+  it('create adiciona, nomeia, grava o project.yaml e guarda segredos', () => {
+    const manager = new ProjectManager(openDatabase(':memory:'))
+    const dir = tempDir()
+    const saved: string[] = []
+    const project = manager.create(
+      {
+        path: dir,
+        name: 'Minha loja',
+        color: '#3b82f6',
+        config: {
+          defaultAgent: 'codex',
+          mcpServers: {
+            github: {
+              type: 'http',
+              url: 'https://x/mcp',
+              headers: { Authorization: 'Bearer ${secret:github_token}' },
+            },
+          },
+        },
+        secrets: { github_token: 'segredo' },
+        writeConfig: true,
+      },
+      (_id, name, value) => saved.push(`${name}=${value}`),
+    )
+    expect(project).toMatchObject({ name: 'Minha loja', color: '#3b82f6', defaultAgent: 'codex' })
+    expect(manager.readConfig(dir).config.mcpServers?.['github']).toBeDefined()
+    expect(readFileSync(join(dir, '.clawos/project.yaml'), 'utf8')).not.toContain('segredo')
+    expect(saved).toEqual(['github_token=segredo'])
+  })
+
+  it('create rejeita configuração inválida sem adicionar o projeto', () => {
+    const manager = new ProjectManager(openDatabase(':memory:'))
+    const dir = tempDir()
+    expect(() =>
+      manager.create(
+        {
+          path: dir,
+          name: 'X',
+          color: '#fff',
+          config: { mcpServers: { 'nome inválido': { command: 'x' } } },
+          secrets: {},
+          writeConfig: true,
+        },
+        () => {},
+      ),
+    ).toThrow()
+    expect(manager.list()).toEqual([])
+  })
+
+  it('create sem writeConfig não cria arquivos na pasta', () => {
+    const manager = new ProjectManager(openDatabase(':memory:'))
+    const dir = tempDir()
+    manager.create(
+      { path: dir, name: 'Y', color: '#fff', config: {}, secrets: {}, writeConfig: false },
+      () => {},
+    )
+    expect(existsSync(join(dir, '.clawos'))).toBe(false)
   })
 })

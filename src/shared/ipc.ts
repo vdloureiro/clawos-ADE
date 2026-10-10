@@ -9,6 +9,8 @@ import type {
   AgentStatus,
   LayoutPreset,
   MergeResult,
+  FolderInspection,
+  NewProjectInput,
   Project,
   SessionEvent,
   SessionMode,
@@ -61,6 +63,9 @@ export interface InvokeChannels {
   'projects:list': { args: []; result: Project[] }
   /** Sem caminho, abre o seletor de pasta. Retorna null se o usuário cancelar. */
   'projects:add': { args: [path?: string]; result: Project | null }
+  /** Analisa uma pasta para o assistente de novo projeto. */
+  'projects:inspect': { args: [path: string]; result: FolderInspection }
+  'projects:create': { args: [input: NewProjectInput]; result: Project }
   'projects:update': {
     args: [id: string, patch: { name?: string; color?: string }]
     result: Project

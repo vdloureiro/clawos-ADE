@@ -180,3 +180,31 @@ export interface MergeResult {
   message: string
   conflicts: string[]
 }
+
+// ---------------------------------------------------------------------------
+// Assistente de novo projeto
+
+export interface FolderInspection {
+  path: string
+  suggestedName: string
+  isGit: boolean
+  /** A pasta já está na lista do Clawos. */
+  alreadyAdded: Project | null
+  /** project.yaml existente (config vazia se não houver). */
+  config: { config: import('./project').ProjectConfig; error: string | null; exists: boolean }
+  /** Arquivos de instruções na raiz (CLAUDE.md, AGENTS.md, GEMINI.md). */
+  instructionFiles: string[]
+  /** Skills encontradas no projeto (./.agents/skills/x, ./.claude/skills/y…). */
+  skills: string[]
+}
+
+export interface NewProjectInput {
+  path: string
+  name: string
+  color: string
+  config: import('./project').ProjectConfig
+  /** Segredos a guardar no cofre do sistema: nome → valor. */
+  secrets: Record<string, string>
+  /** Gravar .clawos/project.yaml (só quando há algo a configurar). */
+  writeConfig: boolean
+}

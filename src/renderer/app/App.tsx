@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
 import type { AppInfo } from '@shared/types'
+import { NewProjectWizard } from '@/components/projects/NewProjectWizard'
 import { GlobalSettings } from '@/components/settings/GlobalSettings'
 import { ProjectSettings } from '@/components/settings/ProjectSettings'
 import { ProjectSidebar } from '@/components/sidebar/ProjectSidebar'
@@ -20,8 +21,14 @@ import { runCommand } from './commands'
 export function App() {
   const theme = useThemeStore((s) => s.theme)
   const [info, setInfo] = useState<AppInfo | null>(null)
-  const { settingsProjectId, openProjectSettings, globalSettingsOpen, setGlobalSettingsOpen } =
-    useUiStore()
+  const {
+    settingsProjectId,
+    openProjectSettings,
+    globalSettingsOpen,
+    setGlobalSettingsOpen,
+    newProjectOpen,
+    setNewProjectOpen,
+  } = useUiStore()
   const claude = useAgentsStore((s) => s.statuses.find((a) => a.id === 'claude'))
   const agentAlert = claude && (!claude.installed || claude.loggedIn === false)
 
@@ -83,6 +90,7 @@ export function App() {
         <ProjectSettings projectId={settingsProjectId} onClose={() => openProjectSettings(null)} />
       )}
       {globalSettingsOpen && <GlobalSettings onClose={() => setGlobalSettingsOpen(false)} />}
+      {newProjectOpen && <NewProjectWizard onClose={() => setNewProjectOpen(false)} />}
     </div>
   )
 }

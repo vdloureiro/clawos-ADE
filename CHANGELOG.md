@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- **Novo projeto em 5 passos:** pasta, nome e cor; agentes (padrão e habilitados) e instruções; MCPs; skills; e revisão. A configuração existente da pasta é detectada e pré-preenchida, assim como os arquivos de instruções e as skills do projeto.
+- **Catálogo de MCPs** para adicionar com um clique: Filesystem, GitHub (servidor remoto oficial), Supabase, Playwright, Context7, Notion, Stripe e Memory. Tokens vão direto para o cofre do sistema; o `project.yaml` só guarda a referência.
+- Opção de abrir uma conversa com o agente padrão assim que o projeto é criado.
+
 ## 0.1.1
 
 - **Corrigido:** conversas que ficavam presas em "Resource not found" ao reabrir o app ou clicar em _Reiniciar sessão_. Acontecia quando a conversa era criada e encerrada antes da primeira mensagem (o Claude só grava a sessão depois dela). Agora, se o agente não conhecer a sessão anterior, o Clawos abre uma nova automaticamente — e avisa no chat apenas se havia contexto a perder.
