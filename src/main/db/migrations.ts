@@ -65,4 +65,21 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE sessions ADD COLUMN base_branch TEXT;
   ALTER TABLE sessions ADD COLUMN base_commit TEXT;
   `,
+  /* 3 */ `
+  CREATE TABLE tasks (
+    id           TEXT PRIMARY KEY,
+    project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title        TEXT NOT NULL,
+    notes        TEXT NOT NULL DEFAULT '',
+    status       TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
+    priority     INTEGER NOT NULL DEFAULT 4 CHECK (priority BETWEEN 1 AND 4),
+    due_date     TEXT,
+    sort_order   INTEGER NOT NULL,
+    session_id   TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL,
+    completed_at INTEGER
+  );
+  CREATE INDEX tasks_project ON tasks(project_id, status, sort_order);
+  `,
 ]

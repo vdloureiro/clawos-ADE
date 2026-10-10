@@ -8,7 +8,8 @@ import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
 import { listProjectFiles } from '../projects/files'
-import { getServices } from '../services'
+import { getServices, sendToAll } from '../services'
+import { taskPrompt } from '../tasks/TaskRepo'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
 
 type Handler<C extends InvokeChannel> = (
@@ -32,7 +33,7 @@ async function pickFolder(title?: string): Promise<string | null> {
 }
 
 export function registerIpcHandlers(): void {
-  const { projects, secrets, sessions, layouts } = getServices()
+  const { projects, secrets, sessions, layouts, tasks } = getServices()
 
   handle('app:info', () => ({
     name: app.getName(),
@@ -129,6 +130,44 @@ export function registerIpcHandlers(): void {
   handle('session:stop', (id) => sessions.stop(id))
   handle('session:restart', (id) => sessions.restart(id))
   handle('session:delete', (id) => sessions.delete(id))
+
+  // Tarefas -----------------------------------------------------------------
+  const tasksChanged = (...projectIds: string[]) => {
+    for (const projectId of new Set(projectIds)) sendToAll('tasks:changed', { projectId })
+  }
+  handle('tasks:list', (projectId) => tasks.list(projectId))
+  handle('tasks:counts', () => tasks.openCounts())
+  handle('tasks:create', (input) => {
+    const task = tasks.create(input)
+    tasksChanged(task.projectId)
+    return task
+  })
+  handle('tasks:update', (id, patch) => {
+    const before = tasks.get(id)
+    const task = tasks.update(id, patch)
+    tasksChanged(before.projectId, task.projectId)
+    return task
+  })
+  handle('tasks:delete', (id) => {
+    const task = tasks.get(id)
+    tasks.delete(id)
+    tasksChanged(task.projectId)
+  })
+  handle('tasks:reorder', (ids) => {
+    tasks.reorder(ids)
+    if (ids[0]) tasksChanged(tasks.get(ids[0]).projectId)
+  })
+  handle('tasks:delegate', async (id, agentId, mode) => {
+    const task = tasks.get(id)
+    const project = projects.get(task.projectId)
+    const session = await sessions.create(task.projectId, agentId, mode, {
+      title: task.title,
+      initialPrompt: taskPrompt(task, project.name),
+    })
+    const linked = tasks.linkSession(id, session.id)
+    tasksChanged(task.projectId)
+    return { task: linked, session }
+  })
 
   // Worktrees ---------------------------------------------------------------
   handle('worktree:diff', (id) => sessions.worktreeDiff(id))

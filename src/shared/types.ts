@@ -208,3 +208,39 @@ export interface NewProjectInput {
   /** Gravar .clawos/project.yaml (só quando há algo a configurar). */
   writeConfig: boolean
 }
+
+// ---------------------------------------------------------------------------
+// Tarefas
+
+export type TaskStatus = 'todo' | 'doing' | 'done'
+/** 1 = mais alta (P1) … 4 = sem prioridade (P4), como no Todoist. */
+export type TaskPriority = 1 | 2 | 3 | 4
+
+export interface Task {
+  id: string
+  projectId: string
+  title: string
+  notes: string
+  status: TaskStatus
+  priority: TaskPriority
+  /** Data no formato AAAA-MM-DD. */
+  dueDate: string | null
+  sortOrder: number
+  /** Conversa para a qual a tarefa foi delegada. */
+  sessionId: string | null
+  createdAt: number
+  updatedAt: number
+  completedAt: number | null
+}
+
+export interface NewTaskInput {
+  projectId: string
+  title: string
+  notes?: string
+  priority?: TaskPriority
+  dueDate?: string | null
+}
+
+export type TaskPatch = Partial<
+  Pick<Task, 'title' | 'notes' | 'status' | 'priority' | 'dueDate' | 'projectId'>
+>

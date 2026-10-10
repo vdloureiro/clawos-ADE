@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import {
   FolderPlus,
   GitBranch,
+  ListTodo,
   MessageSquarePlus,
   MoreHorizontal,
   Search,
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 import { projectActivity, useSessionsStore, type ProjectActivity } from '@/stores/sessions'
+import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import { newSessionInDock, openInDock, removeSessionPanel } from '@/lib/dock'
 
@@ -42,6 +44,10 @@ export function ProjectSidebar() {
   const { projects, activeId, select, add, reorder } = useProjectsStore()
   const summaries = useSessionsStore((s) => s.summaries)
   const setPaletteOpen = useUiStore((s) => s.setPaletteOpen)
+  const view = useUiStore((s) => s.view)
+  const setView = useUiStore((s) => s.setView)
+  const counts = useTasksStore((s) => s.counts)
+  const totalOpen = Object.values(counts).reduce((a, b) => a + b, 0)
   const [dragId, setDragId] = useState<string | null>(null)
 
   const onDrop = (targetId: string) => {
@@ -65,6 +71,23 @@ export function ProjectSidebar() {
           <kbd className="font-sans text-[10px]">
             {navigator.platform.startsWith('Mac') ? '⌘K' : 'Ctrl K'}
           </kbd>
+        </button>
+      </div>
+
+      <div className="px-2 pb-3">
+        <button
+          type="button"
+          onClick={() => setView({ kind: 'tasks', projectId: null })}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+            view.kind === 'tasks' && view.projectId === null
+              ? 'bg-accent text-accent-foreground'
+              : 'hover:bg-accent/50',
+          )}
+        >
+          <ListTodo className="size-4 text-muted-foreground" />
+          <span className="flex-1 text-left">Todas as tarefas</span>
+          {totalOpen > 0 && <span className="text-xs text-muted-foreground">{totalOpen}</span>}
         </button>
       </div>
 
@@ -103,7 +126,10 @@ export function ProjectSidebar() {
                 project={project}
                 active={project.id === activeId}
                 activity={projectActivity(summaries[project.id])}
-                onSelect={() => select(project.id)}
+                onSelect={() => {
+                  select(project.id)
+                  setView({ kind: 'chat' })
+                }}
               />
               {project.id === activeId && (
                 <SessionList project={project} sessions={summaries[project.id] ?? []} />
@@ -273,10 +299,28 @@ const STATUS_DOT: Record<string, string> = {
 
 function SessionList({ project, sessions }: { project: Project; sessions: SessionSummary[] }) {
   const { activeByProject, remove } = useSessionsStore()
-  const active = activeByProject[project.id]
+  const view = useUiStore((s) => s.view)
+  const setView = useUiStore((s) => s.setView)
+  const openTasks = useTasksStore((s) => s.counts[project.id] ?? 0)
+  const onTasks = view.kind === 'tasks' && view.projectId === project.id
+  const active = view.kind === 'chat' ? activeByProject[project.id] : null
 
   return (
     <div className="mt-0.5 mb-1 ml-3 border-l pl-2">
+      <button
+        type="button"
+        onClick={() => setView({ kind: 'tasks', projectId: project.id })}
+        className={cn(
+          'flex w-full items-center gap-2 rounded px-2 py-1 text-xs',
+          onTasks
+            ? 'bg-accent/70 text-foreground'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+        )}
+      >
+        <ListTodo className="size-3" />
+        <span className="flex-1 text-left">Tarefas</span>
+        {openTasks > 0 && <span>{openTasks}</span>}
+      </button>
       <button
         type="button"
         onClick={() => void newSessionInDock(project.id)}

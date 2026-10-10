@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- **Tarefas por projeto**, estilo Todoist: adição rápida, prioridade P1–P4, datas (Hoje, Amanhã, atrasadas), descrição, reordenar arrastando e concluídas recolhidas. O item **Tarefas** fica logo abaixo do nome do projeto na barra lateral, com a contagem de abertas.
+- **Todas as tarefas**: todas as tarefas de todos os projetos numa tela, agrupadas por projeto, com filtros (Hoje, Atrasadas, Delegadas).
+- **Delegar para um agente**: escolha o agente e o modo (mesma pasta ou worktree) e o Clawos abre uma conversa nova com a tarefa já enviada. A tarefa fica em andamento e mostra o status da conversa ao vivo.
+
 ## 0.1.2
 
 - **Novo projeto em 5 passos:** pasta, nome e cor; agentes (padrão e habilitados) e instruções; MCPs; skills; e revisão. A configuração existente da pasta é detectada e pré-preenchida, assim como os arquivos de instruções e as skills do projeto.

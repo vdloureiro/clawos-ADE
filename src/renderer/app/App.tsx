@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useAgentsStore } from '@/stores/agents'
 import { useProjectsStore } from '@/stores/projects'
 import { subscribeToSessionEvents, useSessionsStore } from '@/stores/sessions'
+import { subscribeToTaskEvents } from '@/stores/tasks'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 import { CommandPalette } from './CommandPalette'
@@ -47,7 +48,9 @@ export function App() {
       void openInDock(projectId, sessionId)
     })
     const offCommand = window.clawos.on('app:command', ({ command }) => runCommand(command))
+    const offTasks = subscribeToTaskEvents()
     return () => {
+      offTasks()
       offSessions()
       offFocus()
       offCommand()

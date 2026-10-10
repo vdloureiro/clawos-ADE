@@ -2,6 +2,7 @@ import type { DockviewApi } from 'dockview-react'
 import type { AgentId, SessionMode } from '@shared/types'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
+import { useUiStore } from '@/stores/ui'
 import { chatPanelState, remapLayout } from './layout'
 
 /**
@@ -55,6 +56,7 @@ export async function openInDock(
   groupId?: string,
 ): Promise<void> {
   useProjectsStore.getState().select(projectId)
+  useUiStore.getState().setView({ kind: 'chat' })
   await useSessionsStore.getState().load(sessionId)
   const api = apis.get(projectId)
   if (api) placePanel(api, sessionId, groupId)

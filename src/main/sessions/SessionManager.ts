@@ -54,6 +54,8 @@ const NEW_TITLE = 'Nova conversa'
 export class SessionManager {
   private readonly live = new Map<string, LiveSession>()
   private readonly edits = new EditTracker()
+  /** Mensagens a enviar assim que a sessão ficar pronta (ex.: tarefa delegada). */
+  private readonly pendingPrompts = new Map<string, string>()
 
   constructor(private readonly deps: SessionManagerDeps) {}
 
@@ -69,6 +71,7 @@ export class SessionManager {
     projectId: string,
     agentId?: AgentId,
     mode: SessionMode = 'shared',
+    options: { title?: string; initialPrompt?: string } = {},
   ): Promise<SessionSummary> {
     const project = this.deps.projects.get(projectId)
     const id = randomUUID()
@@ -78,9 +81,10 @@ export class SessionManager {
       id,
       projectId,
       agentId: agentId ?? project.defaultAgent,
-      title: NEW_TITLE,
+      title: options.title?.trim().slice(0, 80) || NEW_TITLE,
       worktree,
     })
+    if (options.initialPrompt) this.pendingPrompts.set(id, options.initialPrompt)
     this.deps.projects.touch(projectId)
     const { summary } = this.deps.repo.get(id)
     this.startAgent(summary, null, [])
@@ -155,6 +159,7 @@ export class SessionManager {
       this.live.delete(id)
     }
     this.edits.forget(id)
+    this.pendingPrompts.delete(id)
     if (stored.worktree) await this.deps.worktrees.discard(stored.projectPath, stored.worktree)
     this.deps.repo.delete(id)
     this.changed(stored.summary.projectId)
@@ -273,6 +278,11 @@ export class SessionManager {
     if (event.type === 'status_change') {
       this.deps.repo.update(id, { status: event.status })
       this.changed(live.chat.info.projectId)
+      const pending = this.pendingPrompts.get(id)
+      if (event.status === 'ready' && pending) {
+        this.pendingPrompts.delete(id)
+        this.prompt(id, pending)
+      }
     }
     if (event.type === 'permission_request') {
       this.deps.notify(live.chat.info, 'permission', event.title)

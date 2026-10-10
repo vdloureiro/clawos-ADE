@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 
+/** O que a área principal mostra: os painéis de chat do projeto ou uma lista de tarefas. */
+export type MainView = { kind: 'chat' } | { kind: 'tasks'; projectId: string | null }
+
 /** Estado de navegação/overlays da interface. */
 interface UiState {
+  view: MainView
+  setView: (view: MainView) => void
   paletteOpen: boolean
   settingsProjectId: string | null
   globalSettingsOpen: boolean
@@ -13,6 +18,8 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>((set) => ({
+  view: { kind: 'chat' },
+  setView: (view) => set({ view }),
   paletteOpen: false,
   settingsProjectId: null,
   globalSettingsOpen: false,

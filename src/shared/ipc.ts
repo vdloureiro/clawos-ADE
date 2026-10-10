@@ -15,6 +15,9 @@ import type {
   SessionEvent,
   SessionMode,
   SessionSummary,
+  Task,
+  TaskPatch,
+  NewTaskInput,
   WorktreeDiff,
 } from './types'
 
@@ -110,6 +113,19 @@ export interface InvokeChannels {
   'session:restart': { args: [sessionId: string]; result: ChatState }
   'session:delete': { args: [sessionId: string]; result: void }
 
+  /** Tarefas de um projeto, ou de todos com `null`. */
+  'tasks:list': { args: [projectId: string | null]; result: Task[] }
+  'tasks:counts': { args: []; result: Record<string, number> }
+  'tasks:create': { args: [input: NewTaskInput]; result: Task }
+  'tasks:update': { args: [id: string, patch: TaskPatch]; result: Task }
+  'tasks:delete': { args: [id: string]; result: void }
+  'tasks:reorder': { args: [ids: string[]]; result: void }
+  /** Abre uma conversa nova com o agente já executando a tarefa. */
+  'tasks:delegate': {
+    args: [id: string, agentId: AgentId, mode: SessionMode]
+    result: { task: Task; session: SessionSummary }
+  }
+
   'worktree:diff': { args: [sessionId: string]; result: WorktreeDiff }
   'worktree:merge': { args: [sessionId: string]; result: MergeResult }
   /** Abre a pasta da worktree no editor (VS Code/Cursor se instalados) ou no Finder. */
@@ -125,6 +141,8 @@ export interface EventChannels {
   'session:event': { sessionId: string; event: SessionEvent }
   /** A lista de sessões de um projeto mudou (nova, título, status). */
   'sessions:changed': { projectId: string }
+  /** Tarefas de um projeto mudaram. */
+  'tasks:changed': { projectId: string }
   /** Comando do menu da aplicação (atalhos de teclado). */
   'app:command': { command: AppCommand }
   /** Clique numa notificação: trazer esta sessão para o foco. */
@@ -143,6 +161,7 @@ export const EVENT_CHANNELS: readonly EventChannel[] = [
   'sessions:changed',
   'session:focus',
   'app:command',
+  'tasks:changed',
   'terminal:data',
   'terminal:exit',
 ]

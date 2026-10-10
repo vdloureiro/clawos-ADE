@@ -9,6 +9,7 @@ import { ProjectManager } from './projects/ProjectManager'
 import { SecretStore } from './secrets/SecretStore'
 import { SessionManager } from './sessions/SessionManager'
 import { SessionRepo } from './sessions/SessionRepo'
+import { TaskRepo } from './tasks/TaskRepo'
 import { WorktreeManager } from './worktrees/WorktreeManager'
 
 /** Instâncias únicas do processo main, criadas após `app.whenReady()`. */
@@ -17,9 +18,10 @@ export interface Services {
   secrets: SecretStore
   sessions: SessionManager
   layouts: LayoutRepo
+  tasks: TaskRepo
 }
 
-function sendToAll(channel: string, payload: unknown): void {
+export function sendToAll(channel: string, payload: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
 }
 
@@ -68,7 +70,7 @@ export function initServices(): Services {
     globalMcps,
     worktrees: new WorktreeManager(join(app.getPath('userData'), 'worktrees')),
   })
-  services = { projects, secrets, sessions, layouts: new LayoutRepo(db) }
+  services = { projects, secrets, sessions, layouts: new LayoutRepo(db), tasks: new TaskRepo(db) }
   return services
 }
 

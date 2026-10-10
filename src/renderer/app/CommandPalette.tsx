@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Command } from 'cmdk'
-import { FolderPlus, MessageSquare, MessageSquarePlus, Settings } from 'lucide-react'
+import { FolderPlus, ListTodo, MessageSquare, MessageSquarePlus, Settings } from 'lucide-react'
 import type { SessionSummary } from '@shared/types'
 import { useActiveProject, useProjectsStore } from '@/stores/projects'
 import { newSessionInDock, openInDock } from '@/lib/dock'
@@ -8,7 +8,7 @@ import { useUiStore } from '@/stores/ui'
 
 /** ⌘K / Ctrl+K: busca rápida de projetos, conversas e ações. */
 export function CommandPalette() {
-  const { paletteOpen, setPaletteOpen, openProjectSettings } = useUiStore()
+  const { paletteOpen, setPaletteOpen, openProjectSettings, setView } = useUiStore()
   const { projects, select, add } = useProjectsStore()
   const activeProject = useActiveProject()
   const [sessions, setSessions] = useState<SessionSummary[]>([])
@@ -57,6 +57,20 @@ export function CommandPalette() {
                 onSelect={run(() => void newSessionInDock(activeProject.id))}
               >
                 <MessageSquarePlus className="size-4" /> Nova conversa em {activeProject.name}
+              </Command.Item>
+            )}
+            <Command.Item
+              className={item}
+              onSelect={run(() => setView({ kind: 'tasks', projectId: null }))}
+            >
+              <ListTodo className="size-4" /> Todas as tarefas
+            </Command.Item>
+            {activeProject && (
+              <Command.Item
+                className={item}
+                onSelect={run(() => setView({ kind: 'tasks', projectId: activeProject.id }))}
+              >
+                <ListTodo className="size-4" /> Tarefas de {activeProject.name}
               </Command.Item>
             )}
             <Command.Item className={item} onSelect={run(() => void add())}>
