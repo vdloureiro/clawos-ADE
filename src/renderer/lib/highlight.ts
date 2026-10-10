@@ -20,6 +20,25 @@ const LANGS: Record<string, () => Promise<unknown>> = {
   rust: () => import('shiki/dist/langs/rust.mjs'),
   go: () => import('shiki/dist/langs/go.mjs'),
   diff: () => import('shiki/dist/langs/diff.mjs'),
+  xml: () => import('shiki/dist/langs/xml.mjs'),
+  toml: () => import('shiki/dist/langs/toml.mjs'),
+  php: () => import('shiki/dist/langs/php.mjs'),
+  java: () => import('shiki/dist/langs/java.mjs'),
+  ruby: () => import('shiki/dist/langs/ruby.mjs'),
+  c: () => import('shiki/dist/langs/c.mjs'),
+  cpp: () => import('shiki/dist/langs/cpp.mjs'),
+  csharp: () => import('shiki/dist/langs/csharp.mjs'),
+  swift: () => import('shiki/dist/langs/swift.mjs'),
+  kotlin: () => import('shiki/dist/langs/kotlin.mjs'),
+  docker: () => import('shiki/dist/langs/docker.mjs'),
+  ini: () => import('shiki/dist/langs/ini.mjs'),
+  graphql: () => import('shiki/dist/langs/graphql.mjs'),
+  prisma: () => import('shiki/dist/langs/prisma.mjs'),
+  vue: () => import('shiki/dist/langs/vue.mjs'),
+  svelte: () => import('shiki/dist/langs/svelte.mjs'),
+  scss: () => import('shiki/dist/langs/scss.mjs'),
+  dotenv: () => import('shiki/dist/langs/dotenv.mjs'),
+  csv: () => import('shiki/dist/langs/csv.mjs'),
 }
 
 const ALIASES: Record<string, string> = {
@@ -35,6 +54,33 @@ const ALIASES: Record<string, string> = {
   yml: 'yaml',
   md: 'markdown',
   rs: 'rust',
+  htm: 'html',
+  svg: 'xml',
+  plist: 'xml',
+  rb: 'ruby',
+  h: 'c',
+  hpp: 'cpp',
+  cc: 'cpp',
+  cs: 'csharp',
+  kt: 'kotlin',
+  dockerfile: 'docker',
+  cfg: 'ini',
+  conf: 'ini',
+  gql: 'graphql',
+  env: 'dotenv',
+  jsonc: 'json',
+  sass: 'scss',
+  less: 'css',
+  mdx: 'markdown',
+}
+
+/** Linguagem do destaque a partir do nome do arquivo (ex.: `schema.sql` → `sql`). */
+export function langForPath(path: string): string | undefined {
+  const name = path.split(/[\\/]/).pop()?.toLowerCase() ?? ''
+  if (name === 'dockerfile' || name.startsWith('dockerfile.')) return 'docker'
+  if (name.startsWith('.env')) return 'dotenv'
+  const ext = name.includes('.') ? name.split('.').pop() : undefined
+  return ext && resolveLang(ext) ? ext : undefined
 }
 
 let highlighter: Promise<HighlighterCore> | null = null

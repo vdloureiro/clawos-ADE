@@ -3,7 +3,8 @@ import type { AgentId, SessionMode } from '@shared/types'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 import { useUiStore } from '@/stores/ui'
-import { chatPanelState, remapLayout } from './layout'
+import { filePanelId, isFilePanel } from './filePanels'
+import { panelState, remapLayout } from './layout'
 
 /**
  * Ponte entre o estado da aplicação e as instâncias do dockview (uma por projeto
@@ -38,14 +39,52 @@ function placePanel(api: DockviewApi, sessionId: string, groupId?: string): void
     return
   }
   const group = (groupId && api.getGroup(groupId)) || api.activeGroup
-  const state = chatPanelState(sessionId, sessionTitle(sessionId))
+  const state = panelState(sessionId, sessionTitle)
   api.addPanel({
     id: state.id,
-    component: 'chat',
-    tabComponent: 'chat',
+    component: state.contentComponent!,
+    tabComponent: state.tabComponent,
     params: state.params,
     title: state.title,
     ...(group && { position: { referenceGroup: group.id } }),
+  })
+}
+
+/**
+ * Abre um arquivo numa aba, como no VS Code: reaproveita o grupo onde já há arquivos
+ * abertos; senão cria um grupo à direita da conversa de onde veio o clique.
+ */
+export function openFileInDock(
+  projectId: string,
+  path: string,
+  fromPanelId?: string,
+  line?: number,
+): void {
+  const api = apis.get(projectId)
+  if (!api) return
+  const id = filePanelId(path)
+  const existing = api.getPanel(id)
+  // `nonce` faz a aba rolar até a linha mesmo se ela já estava aberta nessa linha.
+  const params = { path, line, nonce: Date.now() }
+  if (existing) {
+    existing.api.updateParameters(params)
+    existing.api.setActive()
+    return
+  }
+  const state = panelState(id, sessionTitle)
+  const fileGroup = api.groups.find((g) => g.panels.some((p) => isFilePanel(p.id)))
+  const from = fromPanelId ? api.getPanel(fromPanelId)?.group : api.activeGroup
+  api.addPanel({
+    id,
+    component: 'file',
+    tabComponent: 'file',
+    params,
+    title: state.title,
+    position: fileGroup
+      ? { referenceGroup: fileGroup.id }
+      : from
+        ? { referenceGroup: from.id, direction: 'right' }
+        : undefined,
   })
 }
 

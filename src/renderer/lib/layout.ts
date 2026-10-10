@@ -1,4 +1,5 @@
 import type { SerializedDockview } from 'dockview-react'
+import { fileName, isFilePanel, pathOfPanel } from './filePanels'
 
 type GridNode = SerializedDockview['grid']['root']
 interface LeafData {
@@ -27,6 +28,23 @@ export function chatPanelState(
   }
 }
 
+/** Aba de visualização de um arquivo. */
+export function filePanelState(id: string): SerializedDockview['panels'][string] {
+  const path = pathOfPanel(id)
+  return {
+    id,
+    contentComponent: 'file',
+    tabComponent: 'file',
+    params: { path },
+    title: fileName(path),
+  }
+}
+
+/** Estado serializado de qualquer painel (conversa ou arquivo) a partir do id. */
+export function panelState(id: string, title: (sessionId: string) => string) {
+  return isFilePanel(id) ? filePanelState(id) : chatPanelState(id, title(id))
+}
+
 /**
  * Remove de um layout salvo os painéis cujas sessões não existem mais (apagadas),
  * mantendo a estrutura de grupos. Atualiza títulos a partir de `title`.
@@ -39,6 +57,11 @@ export function sanitizeLayout(
   const copy = structuredClone(layout)
   const panels: SerializedDockview['panels'] = {}
   for (const [id, panel] of Object.entries(copy.panels)) {
+    // Abas de arquivo ficam (o painel mostra "arquivo não encontrado" se ele sumir).
+    if (isFilePanel(id)) {
+      panels[id] = filePanelState(id)
+      continue
+    }
     const sessionId = (panel.params?.['sessionId'] as string | undefined) ?? id
     if (exists(sessionId)) panels[id] = { ...panel, title: title(sessionId) }
   }
@@ -70,7 +93,7 @@ export function remapLayout(
     groups[0].views.push(...queue)
     groups[0].activeView ??= groups[0].views[0]
   }
-  copy.panels = Object.fromEntries(sessionIds.map((id) => [id, chatPanelState(id, title(id))]))
+  copy.panels = Object.fromEntries(sessionIds.map((id) => [id, panelState(id, title)]))
   delete copy.activeGroup
   return copy
 }

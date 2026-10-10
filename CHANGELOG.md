@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- **Arquivos viram links no chat**, como no VS Code: arquivos que o agente cria, edita ou lê, nomes de arquivo citados na resposta (ex.: `consultas/clientes.sql`, `NOTAS.md`, `app.ts:42`) e anexos abrem numa aba ao lado da conversa.
+- A aba mostra o código com destaque de sintaxe e número de linha (vai direto para a linha citada), Markdown formatado (com opção de ver o código) e imagens. Atualiza sozinha quando o arquivo muda e tem atalhos para copiar, abrir no app padrão e mostrar no Finder.
+- As abas de arquivo ficam salvas no layout do projeto.
+
 ## 0.1.6
 
 - Barra de mensagem responsiva: com muitos painéis abertos, os seletores de modelo e permissão encolhem (ficam só com o ícone) em vez de sobrepor os botões, e os menus abrem por cima do painel, sempre inteiros na tela.

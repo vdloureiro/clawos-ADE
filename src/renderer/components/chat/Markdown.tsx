@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { FileLink, InlineCode } from '@/components/files/FileLinks'
 import { CodeBlock } from './CodeBlock'
 
 const components: Components = {
@@ -10,18 +11,27 @@ const components: Components = {
     const lang = /language-([\w+-]+)/.exec(className ?? '')?.[1]
     // Blocos cercados têm classe de linguagem ou quebras de linha; o resto é código inline.
     if (lang || text.includes('\n')) return <CodeBlock code={text.replace(/\n$/, '')} lang={lang} />
-    return <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">{children}</code>
+    // Caminho de arquivo existente vira link para a aba do arquivo.
+    return <InlineCode>{children}</InlineCode>
   },
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="text-blue-500 underline-offset-2 hover:underline"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) =>
+    href && !/^(https?|mailto):/i.test(href) && !href.startsWith('#') ? (
+      <FileLink
+        path={decodeURIComponent(href.replace(/^file:\/\//, ''))}
+        className="inline text-blue-500 underline-offset-2"
+      >
+        {children}
+      </FileLink>
+    ) : (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="text-blue-500 underline-offset-2 hover:underline"
+      >
+        {children}
+      </a>
+    ),
 }
 
 export const Markdown = memo(function Markdown({ text }: { text: string }) {

@@ -12,6 +12,7 @@ import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
 import { listProjectFiles } from '../projects/files'
+import { FileWatchers, readForViewer, resolveExisting } from '../projects/fileViewer'
 import { getServices, sendToAll } from '../services'
 import { taskPrompt } from '../tasks/TaskRepo'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
@@ -125,6 +126,14 @@ export function registerIpcHandlers(): void {
     const error = await shell.openPath(path)
     if (error) throw new Error(error)
   })
+  handle('shell:showItem', (path) => shell.showItemInFolder(path))
+
+  // Visualizador de arquivos ---------------------------------------------------
+  const watchers = new FileWatchers((path) => sendToAll('files:changed', { path }))
+  handle('files:read', (path) => readForViewer(path))
+  handle('files:resolve', (paths, cwd) => resolveExisting(paths, cwd))
+  handle('files:watch', (path) => watchers.watch(path))
+  handle('files:unwatch', (path) => watchers.unwatch(path))
 
   // Agentes -----------------------------------------------------------------
   handle('agents:status', (refresh) => detectAll(refresh))

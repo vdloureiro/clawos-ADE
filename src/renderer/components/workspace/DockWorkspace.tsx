@@ -11,10 +11,11 @@ import {
   type IWatermarkPanelProps,
 } from 'dockview-react'
 import 'dockview-react/dist/styles/dockview.css'
-import { Maximize2, Minimize2, Plus, X } from 'lucide-react'
+import { FileText, Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
 import { AgentLogo } from '@/components/agents/AgentLogo'
 import { ChatPanel } from '@/components/chat/ChatPanel'
+import { FilePanel } from '@/components/files/FilePanel'
 import { Button } from '@/components/ui/button'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import {
@@ -24,6 +25,7 @@ import {
   sessionTitle,
   unregisterDock,
 } from '@/lib/dock'
+import { fileName, isFilePanel } from '@/lib/filePanels'
 import { sanitizeLayout } from '@/lib/layout'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/stores/sessions'
@@ -38,6 +40,50 @@ function ChatDockPanel({ params }: IDockviewPanelProps<ChatParams>) {
     <ErrorBoundary label="Este painel encontrou um erro.">
       <ChatPanel sessionId={params.sessionId} />
     </ErrorBoundary>
+  )
+}
+
+interface FileParams {
+  path: string
+  line?: number
+  nonce?: number
+}
+
+function makeFileDockPanel(projectId: string) {
+  return function FileDockPanel({ params }: IDockviewPanelProps<FileParams>) {
+    return (
+      <ErrorBoundary label="Não foi possível mostrar este arquivo.">
+        <FilePanel
+          path={params.path}
+          line={params.line}
+          nonce={params.nonce}
+          projectId={projectId}
+        />
+      </ErrorBoundary>
+    )
+  }
+}
+
+function FileTab({ api, params }: IDockviewPanelHeaderProps<FileParams>) {
+  return (
+    <div
+      className="group flex h-full max-w-56 items-center gap-1.5 px-2.5 text-xs"
+      title={params.path}
+    >
+      <FileText className="size-3 shrink-0 text-muted-foreground" />
+      <span className="truncate">{fileName(params.path)}</span>
+      <button
+        type="button"
+        className="ml-1 rounded p-0.5 opacity-0 group-hover:opacity-70 hover:bg-accent hover:opacity-100"
+        title="Fechar"
+        onClick={(e) => {
+          e.stopPropagation()
+          api.close()
+        }}
+      >
+        <X className="size-3" />
+      </button>
+    </div>
   )
 }
 
@@ -125,8 +171,7 @@ function makeGroupActions(projectId: string) {
   }
 }
 
-const components = { chat: ChatDockPanel }
-const tabComponents = { chat: ChatTab }
+const tabComponents = { chat: ChatTab, file: FileTab }
 
 /**
  * Dock de um projeto. Fica montado (escondido) ao trocar de projeto para que painéis,
@@ -137,6 +182,10 @@ export function DockWorkspace({ projectId, visible }: { projectId: string; visib
   const apiRef = useRef<DockviewApi | null>(null)
   const watermark = useMemo(() => makeWatermark(projectId), [projectId])
   const groupActions = useMemo(() => makeGroupActions(projectId), [projectId])
+  const components = useMemo(
+    () => ({ chat: ChatDockPanel, file: makeFileDockPanel(projectId) }),
+    [projectId],
+  )
 
   const onReady = async ({ api }: DockviewReadyEvent) => {
     apiRef.current = api
@@ -147,7 +196,7 @@ export function DockWorkspace({ projectId, visible }: { projectId: string; visib
         const known = new Set((sessions.summaries[projectId] ?? []).map((s) => s.id))
         const layout = sanitizeLayout(JSON.parse(json), (id) => known.has(id), sessionTitle)
         api.fromJSON(layout)
-        for (const panel of api.panels) void sessions.load(panel.id)
+        for (const panel of api.panels) if (!isFilePanel(panel.id)) void sessions.load(panel.id)
       } catch {
         api.clear()
       }
@@ -161,6 +210,8 @@ export function DockWorkspace({ projectId, visible }: { projectId: string; visib
       }, 400)
     })
     api.onDidActivePanelChange(({ panel }) => {
+      // Abas de arquivo não mudam a conversa ativa.
+      if (panel && isFilePanel(panel.id)) return
       useSessionsStore.getState().setActive(projectId, panel?.id ?? null)
     })
     registerDock(projectId, api)

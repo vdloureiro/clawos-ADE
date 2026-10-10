@@ -129,6 +129,17 @@ export interface SessionInfo {
 
 export type SessionMode = 'shared' | 'worktree'
 
+/** Conteúdo de um arquivo para o visualizador (aba aberta a partir de um link no chat). */
+export interface FileContent {
+  path: string
+  kind: 'text' | 'image' | 'binary' | 'too_large' | 'missing'
+  size: number
+  mtime: number
+  text?: string
+  /** Imagens: `data:` URL (a CSP não permite `file://`). */
+  dataUrl?: string
+}
+
 /** Linha da lista de conversas de um projeto. `live` = processo do agente rodando. */
 export interface SessionSummary extends SessionInfo {
   mode: SessionMode

@@ -7,6 +7,7 @@ import type { ProjectConfig } from './project'
 import type {
   AgentId,
   AgentStatus,
+  FileContent,
   LayoutPreset,
   MergeResult,
   FolderInspection,
@@ -59,6 +60,13 @@ export interface InvokeChannels {
   'dialog:pickFolder': { args: [title?: string]; result: string | null }
   /** Abre um arquivo no app padrão do sistema. */
   'shell:openPath': { args: [path: string]; result: void }
+  'shell:showItem': { args: [path: string]; result: void }
+  /** Lê um arquivo para a aba de visualização. */
+  'files:read': { args: [path: string]; result: FileContent }
+  /** Caminhos citados pelo agente → absolutos, se existirem (null se não). */
+  'files:resolve': { args: [paths: string[], cwd: string]; result: (string | null)[] }
+  'files:watch': { args: [path: string]; result: void }
+  'files:unwatch': { args: [path: string]; result: void }
 
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }
   /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
@@ -151,6 +159,7 @@ export interface InvokeChannels {
 
 /** Canais de evento (main → renderer). */
 export interface EventChannels {
+  'files:changed': { path: string }
   'session:event': { sessionId: string; event: SessionEvent }
   /** A lista de sessões de um projeto mudou (nova, título, status). */
   'sessions:changed': { projectId: string }
@@ -171,6 +180,7 @@ export type EventChannel = keyof EventChannels
 
 export const EVENT_CHANNELS: readonly EventChannel[] = [
   'session:event',
+  'files:changed',
   'sessions:changed',
   'session:focus',
   'app:command',

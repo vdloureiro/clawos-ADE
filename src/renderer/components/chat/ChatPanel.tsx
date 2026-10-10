@@ -3,6 +3,7 @@ import { Folder, GitBranch, Loader2, RotateCcw, Square } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
 import type { SessionStatus } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
+import { FileLink, FileLinkProvider } from '@/components/files/FileLinks'
 import { Button } from '@/components/ui/button'
 import type { ChatItem } from '@shared/chat'
 import { cn } from '@/lib/utils'
@@ -70,117 +71,119 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     void window.clawos.invoke('session:permission', sessionId, requestId, optionId)
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center gap-3 border-b px-3 py-1.5">
-        <AgentIcon agentId={info.agentId} />
-        <div className="min-w-0 flex-1">
-          {editingTitle ? (
-            <input
-              autoFocus
-              defaultValue={info.title}
-              className="w-full rounded border bg-background px-1 text-sm font-medium outline-none"
-              onBlur={(e) => {
-                void rename(sessionId, e.target.value)
-                setEditingTitle(false)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur()
-                if (e.key === 'Escape') setEditingTitle(false)
-              }}
-            />
-          ) : (
+    <FileLinkProvider value={{ projectId: info.projectId, cwd: info.cwd, panelId: sessionId }}>
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="flex items-center gap-3 border-b px-3 py-1.5">
+          <AgentIcon agentId={info.agentId} />
+          <div className="min-w-0 flex-1">
+            {editingTitle ? (
+              <input
+                autoFocus
+                defaultValue={info.title}
+                className="w-full rounded border bg-background px-1 text-sm font-medium outline-none"
+                onBlur={(e) => {
+                  void rename(sessionId, e.target.value)
+                  setEditingTitle(false)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  if (e.key === 'Escape') setEditingTitle(false)
+                }}
+              />
+            ) : (
+              <div
+                className="truncate text-sm font-medium"
+                onDoubleClick={() => setEditingTitle(true)}
+                title="Duplo clique para renomear"
+              >
+                {info.title}{' '}
+                <span className="font-normal text-muted-foreground">
+                  · {AGENT_META[info.agentId].name}
+                </span>
+              </div>
+            )}
             <div
-              className="truncate text-sm font-medium"
-              onDoubleClick={() => setEditingTitle(true)}
-              title="Duplo clique para renomear"
+              className="flex items-center gap-1 truncate text-[11px] text-muted-foreground"
+              title={info.cwd}
             >
-              {info.title}{' '}
-              <span className="font-normal text-muted-foreground">
-                · {AGENT_META[info.agentId].name}
-              </span>
+              <Folder className="size-3 shrink-0" />
+              <span className="truncate">{info.cwd}</span>
+              {branch && (
+                <>
+                  <GitBranch className="ml-2 size-3 shrink-0" />
+                  <span className="shrink-0">{branch}</span>
+                </>
+              )}
             </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={cn('size-2 rounded-full', STATUS[status].className)} />
+            {STATUS[status].label}
+          </div>
+          {working && (
+            <Button size="sm" variant="outline" onClick={stop}>
+              <Square className="size-3 fill-current" /> Parar
+            </Button>
           )}
-          <div
-            className="flex items-center gap-1 truncate text-[11px] text-muted-foreground"
-            title={info.cwd}
-          >
-            <Folder className="size-3 shrink-0" />
-            <span className="truncate">{info.cwd}</span>
-            {branch && (
-              <>
-                <GitBranch className="ml-2 size-3 shrink-0" />
-                <span className="shrink-0">{branch}</span>
-              </>
+        </header>
+        {summary?.mode === 'worktree' && <WorktreeBar summary={summary} busy={working} />}
+
+        <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
+            {status === 'starting' && items.length === 0 && (
+              <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Iniciando sessão com o{' '}
+                {AGENT_META[info.agentId].name}…
+              </div>
+            )}
+            {items.map((item, index) => (
+              <ChatItemView
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                isLast={index === items.length - 1}
+                working={working}
+                cwd={info.cwd}
+                onRespond={respond}
+              />
+            ))}
+            {(status === 'error' || status === 'closed') && (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => void restart(sessionId)}>
+                  <RotateCcw /> Reiniciar sessão
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => openGlobalSettings(true)}>
+                  Agentes e login
+                </Button>
+              </div>
+            )}
+            {showThinking && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="flex gap-1">
+                  <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-current" />
+                </span>
+                Pensando…
+              </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={cn('size-2 rounded-full', STATUS[status].className)} />
-          {STATUS[status].label}
-        </div>
-        {working && (
-          <Button size="sm" variant="outline" onClick={stop}>
-            <Square className="size-3 fill-current" /> Parar
-          </Button>
-        )}
-      </header>
-      {summary?.mode === 'worktree' && <WorktreeBar summary={summary} busy={working} />}
 
-      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
-          {status === 'starting' && items.length === 0 && (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Iniciando sessão com o{' '}
-              {AGENT_META[info.agentId].name}…
-            </div>
-          )}
-          {items.map((item, index) => (
-            <ChatItemView
-              key={`${item.kind}-${item.id}`}
-              item={item}
-              isLast={index === items.length - 1}
-              working={working}
-              cwd={info.cwd}
-              onRespond={respond}
-            />
-          ))}
-          {(status === 'error' || status === 'closed') && (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => void restart(sessionId)}>
-                <RotateCcw /> Reiniciar sessão
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => openGlobalSettings(true)}>
-                Agentes e login
-              </Button>
-            </div>
-          )}
-          {showThinking && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="flex gap-1">
-                <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-current" />
-              </span>
-              Pensando…
-            </div>
-          )}
-        </div>
+        <ChatInput
+          disabled={status === 'starting' || status === 'error' || status === 'closed'}
+          unavailable={status === 'error' || status === 'closed'}
+          working={working}
+          cwd={info.cwd}
+          loadFiles={() => window.clawos.invoke('projects:files', info.projectId)}
+          configOptions={chat.configOptions}
+          onConfigChange={async (configId, value) => {
+            await window.clawos.invoke('session:setConfig', sessionId, configId, value)
+          }}
+          onSend={send}
+          onStop={stop}
+        />
       </div>
-
-      <ChatInput
-        disabled={status === 'starting' || status === 'error' || status === 'closed'}
-        unavailable={status === 'error' || status === 'closed'}
-        working={working}
-        cwd={info.cwd}
-        loadFiles={() => window.clawos.invoke('projects:files', info.projectId)}
-        configOptions={chat.configOptions}
-        onConfigChange={async (configId, value) => {
-          await window.clawos.invoke('session:setConfig', sessionId, configId, value)
-        }}
-        onSend={send}
-        onStop={stop}
-      />
-    </div>
+    </FileLinkProvider>
   )
 }
 
@@ -205,13 +208,14 @@ function ChatItemView({
           {item.attachments && item.attachments.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {item.attachments.map((path) => (
-                <span
+                <FileLink
                   key={path}
+                  path={path}
                   className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-[11px]"
                   title={path}
                 >
                   {relativize(path, cwd)}
-                </span>
+                </FileLink>
               ))}
             </div>
           )}

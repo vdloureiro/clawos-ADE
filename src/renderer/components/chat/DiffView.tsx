@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { structuredPatch } from 'diff'
 import { ExternalLink } from 'lucide-react'
+import { FileLink, useOpenFile } from '@/components/files/FileLinks'
 import { cn } from '@/lib/utils'
 
 interface Line {
@@ -42,21 +43,24 @@ export function DiffView({
   const added = lines.filter((l) => l.type === 'add').length
   const removed = lines.filter((l) => l.type === 'del').length
   const name = path.split(/[\\/]/).pop()
+  const openFile = useOpenFile()
 
   return (
     <div className="overflow-hidden rounded-md border text-xs">
       <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-1.5">
-        <span className="truncate font-mono" title={path}>
+        <FileLink path={path} className="truncate font-mono" title={`Abrir ${path} numa aba`}>
           {name}
-        </span>
+        </FileLink>
         {oldText === null && <span className="text-muted-foreground">novo arquivo</span>}
         <span className="text-emerald-600 dark:text-emerald-400">+{added}</span>
         <span className="text-red-600 dark:text-red-400">−{removed}</span>
         <button
           type="button"
           className="ml-auto flex items-center gap-1 text-muted-foreground hover:text-foreground"
-          onClick={() => void window.clawos.invoke('shell:openPath', path)}
-          title="Abrir arquivo"
+          onClick={() =>
+            openFile ? void openFile(path) : void window.clawos.invoke('shell:openPath', path)
+          }
+          title="Abrir arquivo numa aba"
         >
           <ExternalLink className="size-3" /> Abrir
         </button>

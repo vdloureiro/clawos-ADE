@@ -161,3 +161,40 @@
   --dv-tabs-and-actions-container-height: 34px;
   --dv-drag-over-background-color: color-mix(in oklch, var(--ring) 30%, transparent);
 }
+
+/* Aba de arquivo: código com número de linha. */
+.file-code pre {
+  background: transparent !important;
+  white-space: pre;
+}
+.file-code code {
+  counter-reset: line;
+}
+.file-code .line {
+  display: inline-block;
+  min-width: 100%;
+  padding-right: 1rem;
+}
+.file-code .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 3.25em;
+  margin-right: 1.25em;
+  text-align: right;
+  color: var(--muted-foreground);
+  opacity: 0.6;
+  user-select: none;
+}
+.file-code .line.target {
+  background: color-mix(in oklab, var(--color-amber-500) 18%, transparent);
+}
+.file-code span {
+  color: var(--shiki-light);
+}
+.dark .file-code span {
+  color: var(--shiki-dark);
+}
+.file-code .line::before {
+  color: var(--muted-foreground);
+}

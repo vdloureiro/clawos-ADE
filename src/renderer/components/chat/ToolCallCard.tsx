@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ToolCallView, ToolKind } from '@shared/types'
+import { FileLink } from '@/components/files/FileLinks'
 import { cn } from '@/lib/utils'
 import { DiffView } from './DiffView'
 import { Markdown } from './Markdown'
@@ -32,6 +33,9 @@ const ICONS: Record<ToolKind, LucideIcon> = {
   switch_mode: ArrowRightLeft,
   other: Wrench,
 }
+
+/** Ferramentas cujo `locations` aponta arquivos que vale abrir. */
+const FILE_KINDS = new Set<ToolKind>(['read', 'edit', 'move', 'other'])
 
 function StatusIcon({ status }: { status: ToolCallView['status'] }) {
   if (status === 'completed')
@@ -67,6 +71,12 @@ export function ToolCallCard({ toolCall, cwd }: { toolCall: ToolCallView; cwd: s
   const texts = toolCall.content.filter((c) => c.type === 'text')
   const command = toolCall.kind === 'execute' ? commandOf(toolCall.input) : null
   const hasDetails = texts.length > 0 || command !== null || toolCall.output !== undefined
+  // Arquivos lidos/criados/editados viram links (os com diff já têm o link no cabeçalho).
+  const withDiff = new Set(diffs.map((d) => d.path))
+  const files =
+    FILE_KINDS.has(toolCall.kind) && toolCall.status !== 'failed'
+      ? [...new Set(toolCall.locations)].filter((f) => !withDiff.has(f))
+      : []
 
   return (
     <div className="rounded-md border bg-card text-card-foreground">
@@ -91,6 +101,21 @@ export function ToolCallCard({ toolCall, cwd }: { toolCall: ToolCallView; cwd: s
         </span>
         <StatusIcon status={toolCall.status} />
       </button>
+
+      {files.length > 0 && (
+        <div className="-mt-1 flex flex-wrap gap-1 px-3 pb-2 pl-8">
+          {files.map((file) => (
+            <FileLink
+              key={file}
+              path={file}
+              className="flex max-w-full items-center gap-1 truncate rounded border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-blue-600 hover:bg-accent dark:text-blue-400"
+            >
+              <FileText className="size-3 shrink-0" />
+              <span className="truncate">{relativize(file, cwd)}</span>
+            </FileLink>
+          ))}
+        </div>
+      )}
 
       {diffs.length > 0 && (
         <div className="space-y-2 px-3 pb-3">
