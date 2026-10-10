@@ -65,6 +65,13 @@ describe('isSessionNotFound', () => {
   it('reconhece pelo código ou pela mensagem', () => {
     expect(isSessionNotFound(notFound)).toBe(true)
     expect(isSessionNotFound({ message: 'Session not found' })).toBe(true)
+    expect(
+      isSessionNotFound({
+        code: -32603,
+        message: 'Internal error',
+        data: 'no rollout found for thread id 01a1',
+      }),
+    ).toBe(true)
     expect(isSessionNotFound(new Error('outra coisa'))).toBe(false)
     expect(isSessionNotFound(null)).toBe(false)
   })

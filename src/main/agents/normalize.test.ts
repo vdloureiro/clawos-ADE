@@ -1,6 +1,6 @@
 import type { SessionUpdate } from '@agentclientprotocol/sdk'
 import { describe, expect, it } from 'vitest'
-import { normalizePermissionOptions, normalizeUpdate } from './normalize'
+import { normalizeConfigOptions, normalizePermissionOptions, normalizeUpdate } from './normalize'
 
 // Payloads reduzidos a partir de uma sessão real com claude-agent-acp 0.88.0.
 describe('normalizeUpdate', () => {
@@ -188,5 +188,87 @@ describe('unpacked', () => {
       'C:\\Clawos\\resources\\app.asar.unpacked\\out\\main\\agentHost.js',
     )
     expect(unpacked('/dev/node_modules/x.js')).toBe('/dev/node_modules/x.js')
+  })
+})
+
+describe('normalizeConfigOptions', () => {
+  it('mantém listas de escolha, achata grupos e descarta booleanos', () => {
+    const options = normalizeConfigOptions([
+      {
+        id: 'model',
+        name: 'Model',
+        category: 'model',
+        type: 'select',
+        currentValue: 'default',
+        options: [
+          { value: 'default', name: 'Default (recommended)', description: 'Opus' },
+          { value: 'sonnet', name: 'Sonnet' },
+        ],
+      },
+      {
+        id: 'mode',
+        name: 'Mode',
+        category: 'mode',
+        type: 'select',
+        currentValue: 'agent',
+        options: [
+          { group: 'safe', name: 'Seguro', options: [{ value: 'read-only', name: 'Read-only' }] },
+          { group: 'auto', name: 'Auto', options: [{ value: 'agent', name: 'Auto review' }] },
+        ],
+      },
+      { id: 'fast', name: 'Fast', type: 'boolean', currentValue: false },
+    ])
+    expect(options).toEqual([
+      {
+        id: 'model',
+        name: 'Model',
+        category: 'model',
+        currentValue: 'default',
+        options: [
+          { value: 'default', name: 'Default (recommended)', description: 'Opus' },
+          { value: 'sonnet', name: 'Sonnet' },
+        ],
+      },
+      {
+        id: 'mode',
+        name: 'Mode',
+        category: 'mode',
+        currentValue: 'agent',
+        options: [
+          { value: 'read-only', name: 'Read-only' },
+          { value: 'agent', name: 'Auto review' },
+        ],
+      },
+    ])
+  })
+
+  it('traduz config_option_update em evento', () => {
+    const events = normalizeUpdate({
+      sessionUpdate: 'config_option_update',
+      configOptions: [
+        {
+          id: 'mode',
+          name: 'Mode',
+          category: 'mode',
+          type: 'select',
+          currentValue: 'plan',
+          options: [{ value: 'plan', name: 'Plan' }],
+        },
+      ],
+    } as SessionUpdate)
+    expect(events).toEqual([
+      {
+        type: 'config_options',
+        options: [
+          {
+            id: 'mode',
+            name: 'Mode',
+            category: 'mode',
+            currentValue: 'plan',
+            options: [{ value: 'plan', name: 'Plan' }],
+          },
+        ],
+      },
+    ])
   })
 })

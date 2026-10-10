@@ -23,11 +23,11 @@ const RESOURCE_NOT_FOUND = -32002
 
 export function isSessionNotFound(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
-  const { code, message } = error as { code?: unknown; message?: unknown }
-  return (
-    code === RESOURCE_NOT_FOUND ||
-    (typeof message === 'string' && /resource not found|session not found/i.test(message))
-  )
+  const { code, message, data } = error as { code?: unknown; message?: unknown; data?: unknown }
+  if (code === RESOURCE_NOT_FOUND) return true
+  // O codex-acp manda o detalhe em `data` ("no rollout found for thread id …").
+  const text = [message, typeof data === 'string' ? data : JSON.stringify(data ?? '')].join(' ')
+  return /resource not found|session not found|no rollout found/i.test(text)
 }
 
 export async function openSession(

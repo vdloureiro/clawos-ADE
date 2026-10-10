@@ -82,4 +82,13 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX tasks_project ON tasks(project_id, status, sort_order);
   `,
+  /* 4 */ `
+  ALTER TABLE sessions ADD COLUMN config TEXT;
+  -- Última escolha de modelo/modo de permissão por agente, usada nas conversas novas.
+  CREATE TABLE agent_preferences (
+    agent_id   TEXT PRIMARY KEY,
+    config     TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ]

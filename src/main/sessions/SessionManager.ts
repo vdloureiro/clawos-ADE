@@ -5,6 +5,8 @@ import { applyEvent, createChatState, type ChatState } from '@shared/chat'
 import type {
   AgentId,
   MergeResult,
+  SessionConfigChoice,
+  SessionConfigOption,
   SessionEvent,
   SessionInfo,
   SessionMode,
@@ -96,9 +98,9 @@ export class SessionManager {
   open(id: string): ChatState {
     const existing = this.live.get(id)
     if (existing) return existing.chat
-    const { summary, acpSessionId } = this.deps.repo.get(id)
+    const { summary, acpSessionId, config } = this.deps.repo.get(id)
     const items = this.deps.repo.loadItems(id)
-    this.startAgent(summary, acpSessionId, items)
+    this.startAgent(summary, acpSessionId, items, config)
     this.changed(summary.projectId)
     return this.live.get(id)!.chat
   }
@@ -117,6 +119,25 @@ export class SessionManager {
 
   cancel(id: string): Promise<void> {
     return this.requireAgent(id).cancel()
+  }
+
+  /**
+   * Troca modelo, modo de permissão etc. A escolha fica salva na conversa e vira o
+   * padrão das próximas conversas com o mesmo agente.
+   */
+  async setConfig(id: string, configId: string, value: string): Promise<SessionConfigOption[]> {
+    const options = await this.requireAgent(id).setConfig(configId, value)
+    const category = options.find((o) => o.id === configId)?.category
+    if (category) {
+      const stored = this.deps.repo.get(id)
+      this.deps.repo.update(id, { config: { ...stored.config, [category]: value } })
+      const agentId = stored.summary.agentId
+      this.deps.repo.saveAgentPreferences(agentId, {
+        ...this.deps.repo.agentPreferences(agentId),
+        [category]: value,
+      })
+    }
+    return options
   }
 
   respondPermission(id: string, requestId: string, optionId: string | null): void {
@@ -206,7 +227,10 @@ export class SessionManager {
     summary: SessionSummary,
     resumeAcpSessionId: string | null,
     items: ChatState['items'],
+    config: SessionConfigChoice | null = null,
   ): void {
+    // Conversa nova (ou anterior a esta opção) herda a última escolha feita com o agente.
+    const choice = { ...this.deps.repo.agentPreferences(summary.agentId), ...config }
     const live: LiveSession = {
       agent: null,
       chat: { ...createChatState(summary), items },
@@ -232,6 +256,7 @@ export class SessionManager {
           compiled,
           resumeAcpSessionId,
           hasHistory: items.some((i) => i.kind === 'user'),
+          config: choice,
           emit,
           onAcpSessionId: (acpSessionId) => this.deps.repo.update(summary.id, { acpSessionId }),
         })

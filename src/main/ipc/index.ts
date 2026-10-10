@@ -1,5 +1,9 @@
 import { spawn } from 'node:child_process'
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, systemPreferences } from 'electron'
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
 import packageJson from '../../../package.json'
 import { detectAll, resolveCli } from '../agents/detect'
@@ -32,6 +36,68 @@ async function pickFolder(title?: string): Promise<string | null> {
   return result.canceled ? null : (result.filePaths[0] ?? null)
 }
 
+async function pickFiles(): Promise<string[]> {
+  const window = BrowserWindow.getFocusedWindow()
+  const options: Electron.OpenDialogOptions = {
+    title: 'Anexar arquivos',
+    properties: ['openFile', 'multiSelections'],
+  }
+  const result = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options)
+  return result.canceled ? [] : result.filePaths
+}
+
+const MAC_FILENAMES = 'electron application/osclipboard;format="NSFilenamesPboardType"'
+
+function decodeXml(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+}
+
+/** Caminhos de arquivos copiados no gerenciador de arquivos do sistema (Finder, Explorer…). */
+async function clipboardFilePaths(): Promise<string[]> {
+  const paths: string[] = []
+  try {
+    for (const item of await clipboard.read()) {
+      // No macOS a lista completa (vários arquivos) vem no plist do Finder.
+      if (item.types.includes(MAC_FILENAMES)) {
+        const plist = await (await item.getType(MAC_FILENAMES)).text()
+        for (const m of plist.matchAll(/<string>([^<]+)<\/string>/g)) paths.push(decodeXml(m[1]!))
+      } else if (item.types.includes('text/uri-list')) {
+        const list = await (await item.getType('text/uri-list')).text()
+        for (const line of list.split(/\r?\n/)) {
+          if (line.startsWith('file://')) paths.push(fileURLToPath(line.trim()))
+        }
+      }
+    }
+  } catch {
+    return []
+  }
+  return [...new Set(paths)].filter((path) => existsSync(path))
+}
+
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
+
+/** Grava conteúdo colado (ex.: print de tela) fora dos projetos, para anexar à mensagem. */
+function saveAttachment(name: string, data: Uint8Array): string {
+  if (data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error('Arquivo maior que 50 MB.')
+  const safe =
+    name
+      .replace(/[^\w.\- ]+/g, '_')
+      .replace(/^\.+/, '')
+      .slice(0, 120) || 'colado'
+  const dir = join(app.getPath('userData'), 'attachments', randomUUID())
+  mkdirSync(dir, { recursive: true })
+  const path = join(dir, safe)
+  writeFileSync(path, data)
+  return path
+}
+
 export function registerIpcHandlers(): void {
   const { projects, secrets, sessions, layouts, tasks } = getServices()
 
@@ -47,6 +113,14 @@ export function registerIpcHandlers(): void {
     },
   }))
   handle('dialog:pickFolder', (title) => pickFolder(title))
+  handle('dialog:pickFiles', () => pickFiles())
+  handle('clipboard:filePaths', () => clipboardFilePaths())
+  handle('attachments:save', (name, data) => saveAttachment(name, data))
+  handle('media:microphone', async () => {
+    if (process.platform !== 'darwin') return true
+    if (systemPreferences.getMediaAccessStatus('microphone') === 'granted') return true
+    return systemPreferences.askForMediaAccess('microphone')
+  })
   handle('shell:openPath', async (path) => {
     const error = await shell.openPath(path)
     if (error) throw new Error(error)
@@ -123,6 +197,7 @@ export function registerIpcHandlers(): void {
   // Não aguardamos o turno inteiro: o progresso chega por `session:event`.
   handle('session:prompt', (id, text, attachments) => sessions.prompt(id, text, attachments))
   handle('session:cancel', (id) => sessions.cancel(id))
+  handle('session:setConfig', (id, configId, value) => sessions.setConfig(id, configId, value))
   handle('session:permission', (id, requestId, optionId) =>
     sessions.respondPermission(id, requestId, optionId),
   )

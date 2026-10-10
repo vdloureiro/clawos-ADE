@@ -39,6 +39,8 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: true
   artifactName: Clawos-${version}-mac-${arch}.${ext}
+  extendInfo:
+    NSMicrophoneUsageDescription: O Clawos usa o microfone para ditar mensagens aos agentes. A transcrição é feita no seu computador.
 dmg:
   artifactName: Clawos-${version}-mac-${arch}.${ext}
 win:

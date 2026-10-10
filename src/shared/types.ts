@@ -81,6 +81,22 @@ export interface PermissionOptionView {
 
 export type StopReason = 'end_turn' | 'max_tokens' | 'max_turn_requests' | 'refusal' | 'cancelled'
 
+/**
+ * Opção de configuração da sessão exposta pelo agente (ACP `configOptions`): modelo,
+ * modo de permissão, nível de raciocínio… Só as do tipo lista de escolha.
+ */
+export interface SessionConfigOption {
+  id: string
+  name: string
+  /** `model`, `mode`, `thought_level`… (categorias do ACP). */
+  category: string | null
+  currentValue: string
+  options: { value: string; name: string; description?: string }[]
+}
+
+/** Valores escolhidos pelo usuário, por categoria (ex.: `{ model: 'sonnet', mode: 'default' }`). */
+export type SessionConfigChoice = Partial<Record<string, string>>
+
 export type SessionEvent =
   | { type: 'status_change'; status: SessionStatus; detail?: string }
   | { type: 'user_message'; id: string; text: string; attachments?: string[] }
@@ -100,6 +116,7 @@ export type SessionEvent =
   | { type: 'turn_end'; stopReason: StopReason }
   /** Aviso informativo (ex.: limitações de configuração deste agente). */
   | { type: 'notice'; text: string }
+  | { type: 'config_options'; options: SessionConfigOption[] }
   | { type: 'error'; message: string }
 
 export interface SessionInfo {

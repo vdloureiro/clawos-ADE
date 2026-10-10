@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+- **Seleção de modelo** na barra do chat (ex.: Opus, Sonnet, Haiku no Claude; os modelos do Codex), com o nível de raciocínio. A lista vem do próprio CLI, então modelos novos aparecem sozinhos.
+- **Permissões**: escolha entre Automático (faz tudo sem pedir), Automático com revisão, Editar sem pedir, Pedir permissão ou Só planejar. A escolha fica salva na conversa e vira o padrão das próximas com o mesmo agente.
+- **Anexar arquivos** pelo clipe, ou colando (⌘V) arquivos copiados no Finder e prints de tela. Imagens vão direto para o modelo.
+- **Ditado por voz**: grave pelo microfone e o texto aparece no campo para revisar e enviar. A transcrição (Whisper) roda no seu computador; o modelo de voz é baixado uma única vez.
+- Correção: conversas do Codex que não podiam ser retomadas agora abrem uma sessão nova em vez de falhar.
+
 ## 0.1.4
 
 - Logos reais dos agentes (Claude e Codex), em preto e branco, no lugar das letras: abas, cabeçalho da conversa, menu de novo agente, tarefas e configurações.

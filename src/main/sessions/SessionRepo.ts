@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { ChatItem } from '@shared/chat'
-import type { AgentId, SessionStatus, SessionSummary } from '@shared/types'
+import type { AgentId, SessionConfigChoice, SessionStatus, SessionSummary } from '@shared/types'
 
 interface SessionRow {
   id: string
@@ -13,6 +13,7 @@ interface SessionRow {
   worktree_path: string | null
   base_branch: string | null
   base_commit: string | null
+  config: string | null
   status: string
   created_at: number
   updated_at: number
@@ -23,6 +24,8 @@ interface SessionRow {
 export interface StoredSession {
   summary: SessionSummary
   acpSessionId: string | null
+  /** Modelo, modo de permissão etc. escolhidos nesta conversa. */
+  config: SessionConfigChoice | null
   /** Presente nas sessões em worktree isolada. */
   worktree: { path: string; branch: string; baseBranch: string; baseCommit: string } | null
   projectPath: string
@@ -122,6 +125,7 @@ export class SessionRepo {
       status?: SessionStatus
       acpSessionId?: string
       branch?: string | null
+      config?: SessionConfigChoice
     },
   ): void {
     const sets: string[] = ['updated_at = @now']
@@ -129,9 +133,29 @@ export class SessionRepo {
     if (patch.title !== undefined) sets.push('title = @title')
     if (patch.status !== undefined) sets.push('status = @status')
     if (patch.acpSessionId !== undefined) sets.push('acp_session_id = @acpSessionId')
+    if (patch.config !== undefined) sets.push('config = @config')
+    this.db.prepare(`UPDATE sessions SET ${sets.join(', ')} WHERE id = @id`).run({
+      ...patch,
+      config: patch.config === undefined ? undefined : JSON.stringify(patch.config),
+      id,
+      now: Date.now(),
+    })
+  }
+
+  agentPreferences(agentId: AgentId): SessionConfigChoice {
+    const row = this.db
+      .prepare('SELECT config FROM agent_preferences WHERE agent_id = ?')
+      .get(agentId) as { config: string } | undefined
+    return row ? parseConfig(row.config) : {}
+  }
+
+  saveAgentPreferences(agentId: AgentId, config: SessionConfigChoice): void {
     this.db
-      .prepare(`UPDATE sessions SET ${sets.join(', ')} WHERE id = @id`)
-      .run({ ...patch, id, now: Date.now() })
+      .prepare(
+        `INSERT INTO agent_preferences (agent_id, config, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(agent_id) DO UPDATE SET config = excluded.config, updated_at = excluded.updated_at`,
+      )
+      .run(agentId, JSON.stringify(config), Date.now())
   }
 
   delete(id: string): void {
@@ -161,6 +185,20 @@ export class SessionRepo {
   }
 }
 
+function parseConfig(json: string): SessionConfigChoice {
+  try {
+    const value: unknown = JSON.parse(json)
+    if (!value || typeof value !== 'object') return {}
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    )
+  } catch {
+    return {}
+  }
+}
+
 function toStored(row: SessionRow): StoredSession {
   const worktree =
     row.mode === 'worktree' && row.worktree_path && row.branch
@@ -173,6 +211,7 @@ function toStored(row: SessionRow): StoredSession {
       : null
   return {
     acpSessionId: row.acp_session_id,
+    config: row.config ? parseConfig(row.config) : null,
     worktree,
     projectPath: row.project_path,
     summary: {

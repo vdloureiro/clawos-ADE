@@ -1,11 +1,18 @@
 import type {
   ContentBlock,
   PermissionOption,
+  SessionConfigOption as AcpConfigOption,
   SessionUpdate,
   ToolCallContent,
   ToolCallLocation,
 } from '@agentclientprotocol/sdk'
-import type { PermissionOptionView, SessionEvent, ToolCallView, ToolContent } from '@shared/types'
+import type {
+  PermissionOptionView,
+  SessionConfigOption,
+  SessionEvent,
+  ToolCallView,
+  ToolContent,
+} from '@shared/types'
 
 /**
  * Traduz `session/update` do ACP para os eventos normalizados que a UI entende.
@@ -72,9 +79,34 @@ export function normalizeUpdate(update: SessionUpdate): SessionEvent[] {
         ? [{ type: 'error', message: text }]
         : [{ type: 'notice', text }]
     }
+    case 'config_option_update':
+      return [{ type: 'config_options', options: normalizeConfigOptions(update.configOptions) }]
     default:
       return []
   }
+}
+
+/** Opções de configuração do ACP → formato da UI (só listas de escolha; grupos achatados). */
+export function normalizeConfigOptions(
+  options: AcpConfigOption[] | null | undefined,
+): SessionConfigOption[] {
+  const result: SessionConfigOption[] = []
+  for (const option of options ?? []) {
+    if (option.type !== 'select') continue
+    const values = option.options.flatMap((o) => ('group' in o ? o.options : [o]))
+    result.push({
+      id: option.id,
+      name: option.name,
+      category: option.category ?? null,
+      currentValue: option.currentValue,
+      options: values.map((v) => ({
+        value: v.value,
+        name: v.name,
+        ...(v.description && { description: v.description }),
+      })),
+    })
+  }
+  return result
 }
 
 export function normalizePermissionOptions(options: PermissionOption[]): PermissionOptionView[] {

@@ -4,8 +4,11 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { closeDb } from './db'
 import { registerIpcHandlers } from './ipc'
 import { buildMenu } from './menu'
+import { handleMlProtocol, registerMlScheme } from './ml/mlProtocol'
 import { getServices, initServices } from './services'
 import { killAllTerminals } from './terminals/terminals'
+
+registerMlScheme()
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -48,6 +51,7 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   initServices()
+  handleMlProtocol(join(__dirname, '../renderer'))
   registerIpcHandlers()
   buildMenu()
   createWindow()

@@ -12,6 +12,7 @@ import type {
   FolderInspection,
   NewProjectInput,
   Project,
+  SessionConfigOption,
   SessionEvent,
   SessionMode,
   SessionSummary,
@@ -104,6 +105,18 @@ export interface InvokeChannels {
     result: void
   }
   'session:cancel': { args: [sessionId: string]; result: void }
+  /** Escolhe arquivos para anexar à mensagem. */
+  'dialog:pickFiles': { args: []; result: string[] }
+  /** Arquivos copiados no Finder/Explorer (o colar do navegador só traz o nome). */
+  'clipboard:filePaths': { args: []; result: string[] }
+  /** Grava um conteúdo colado (ex.: print de tela) e devolve o caminho para anexar. */
+  'attachments:save': { args: [name: string, data: Uint8Array]; result: string }
+  /** Pede acesso ao microfone (macOS); true se liberado. */
+  'media:microphone': { args: []; result: boolean }
+  'session:setConfig': {
+    args: [sessionId: string, configId: string, value: string]
+    result: SessionConfigOption[]
+  }
   'session:permission': {
     args: [sessionId: string, requestId: string, optionId: string | null]
     result: void

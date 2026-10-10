@@ -1,14 +1,21 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { basename, join } from 'node:path'
+import { readFileSync, statSync } from 'node:fs'
+import { basename, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Readable, Writable } from 'node:stream'
 import * as acp from '@agentclientprotocol/sdk'
-import type { AgentId, SessionEvent, SessionStatus } from '@shared/types'
+import type {
+  AgentId,
+  SessionConfigChoice,
+  SessionConfigOption,
+  SessionEvent,
+  SessionStatus,
+} from '@shared/types'
 import type { CompiledSession } from '../compiler/ConfigCompiler'
 import { resolveCli } from './detect'
-import { normalizePermissionOptions, normalizeUpdate } from './normalize'
+import { normalizeConfigOptions, normalizePermissionOptions, normalizeUpdate } from './normalize'
 import { openSession } from './openSession'
 import { getAgent } from './registry'
 import { getShellEnv } from './shellEnv'
@@ -39,6 +46,8 @@ export interface AgentSessionOptions {
   resumeAcpSessionId: string | null
   /** A conversa já tem mensagens (para avisar se o contexto do agente não puder ser retomado). */
   hasHistory: boolean
+  /** Modelo, modo de permissão etc. escolhidos pelo usuário, aplicados ao abrir a sessão. */
+  config: SessionConfigChoice
   emit: (event: SessionEvent) => void
   /** Chamado quando o agente atribui o id da sessão ACP (para persistir). */
   onAcpSessionId: (acpSessionId: string) => void
@@ -64,6 +73,9 @@ export class AgentSession {
   private closing = false
   /** Durante `session/load`, updates são o histórico sendo reenviado. */
   private replaying = false
+  private configOptions: SessionConfigOption[] = []
+  /** O agente aceita imagens no prompt (ACP `promptCapabilities.image`). */
+  private acceptsImages = false
 
   constructor(private readonly options: AgentSessionOptions) {
     this.id = options.id
@@ -83,6 +95,7 @@ export class AgentSession {
       })
       const { compiled, resumeAcpSessionId } = this.options
       const caps = init.agentCapabilities
+      this.acceptsImages = caps?.promptCapabilities?.image === true
       const base = {
         cwd: this.cwd,
         mcpServers: compiled.mcpServers,
@@ -92,27 +105,41 @@ export class AgentSession {
         _meta: compiled.meta,
       }
 
+      // Resposta de session/new|resume|load, de onde vêm as opções de configuração.
+      let response: { configOptions?: acp.SessionConfigOption[] | null } | undefined
+      const keep = <T>(value: T): T => {
+        response = value as typeof response
+        return value
+      }
       const opened = await openSession(resumeAcpSessionId, {
         // Retoma o contexto sem reenviar o histórico (a UI já o tem do banco).
         resume: caps?.sessionCapabilities?.resume
-          ? (sessionId) =>
-              connection.agent.request(acp.methods.agent.session.resume, { sessionId, ...base })
+          ? async (sessionId) =>
+              keep(
+                await connection.agent.request(acp.methods.agent.session.resume, {
+                  sessionId,
+                  ...base,
+                }),
+              )
           : undefined,
         // `session/load` reenvia o histórico como updates; descartamos para não duplicar.
         load: caps?.loadSession
           ? async (sessionId) => {
               this.replaying = true
               try {
-                return await connection.agent.request(acp.methods.agent.session.load, {
-                  sessionId,
-                  ...base,
-                })
+                return keep(
+                  await connection.agent.request(acp.methods.agent.session.load, {
+                    sessionId,
+                    ...base,
+                  }),
+                )
               } finally {
                 this.replaying = false
               }
             }
           : undefined,
-        create: () => connection.agent.request(acp.methods.agent.session.new, base),
+        create: async () =>
+          keep(await connection.agent.request(acp.methods.agent.session.new, base)),
       })
       this.acpSessionId = opened.sessionId
       if (opened.created) this.options.onAcpSessionId(opened.sessionId)
@@ -123,6 +150,9 @@ export class AgentSession {
         })
       }
       for (const text of compiled.warnings) this.emit({ type: 'notice', text })
+      this.configOptions = normalizeConfigOptions(response?.configOptions)
+      await this.applyChoice(this.options.config)
+      this.emit({ type: 'config_options', options: this.configOptions })
       this.setStatus('ready')
     } catch (error) {
       this.fail(error)
@@ -141,15 +171,7 @@ export class AgentSession {
     try {
       const result = await this.connection.agent.request(acp.methods.agent.session.prompt, {
         sessionId: this.acpSessionId,
-        prompt: <acp.ContentBlock[]>[
-          { type: 'text', text },
-          // Arquivos anexados/mencionados viram links de recurso; o agente lê o conteúdo.
-          ...attachments.map((path) => ({
-            type: 'resource_link',
-            uri: pathToFileURL(path).href,
-            name: basename(path),
-          })),
-        ],
+        prompt: [{ type: 'text', text }, ...attachments.map((path) => this.attachmentBlock(path))],
       })
       this.emit({ type: 'turn_end', stopReason: result.stopReason })
       this.setStatus('ready')
@@ -157,6 +179,59 @@ export class AgentSession {
       if (this.closing) return
       this.emit({ type: 'error', message: describeError(error) })
       this.setStatus(this.process ? 'ready' : 'error')
+    }
+  }
+
+  /**
+   * Imagens vão como bloco de imagem (o modelo as vê direto); os demais arquivos viram
+   * links de recurso e o agente lê o conteúdo com as próprias ferramentas.
+   */
+  private attachmentBlock(path: string): acp.ContentBlock {
+    const mimeType = IMAGE_TYPES[extname(path).toLowerCase()]
+    if (mimeType && this.acceptsImages) {
+      try {
+        if (statSync(path).size <= MAX_IMAGE_BYTES)
+          return { type: 'image', mimeType, data: readFileSync(path).toString('base64') }
+      } catch {
+        // Arquivo sumiu: manda o link e o agente reporta.
+      }
+    }
+    return { type: 'resource_link', uri: pathToFileURL(path).href, name: basename(path) }
+  }
+
+  /** Troca uma opção (modelo, modo de permissão…). Vale a partir do próximo turno. */
+  async setConfig(configId: string, value: string, emit = true): Promise<SessionConfigOption[]> {
+    if (!this.connection || !this.acpSessionId) throw new Error('Sessão ainda não está pronta.')
+    const result = await this.connection.agent.request(acp.methods.agent.session.setConfigOption, {
+      sessionId: this.acpSessionId,
+      configId,
+      value,
+    })
+    this.configOptions = normalizeConfigOptions(result.configOptions)
+    if (emit) this.emit({ type: 'config_options', options: this.configOptions })
+    return this.configOptions
+  }
+
+  /**
+   * Reaplica as escolhas do usuário (por categoria). O modelo vai primeiro, pois os
+   * níveis de raciocínio disponíveis dependem dele. Valores que o agente não oferece
+   * mais (ex.: modelo descontinuado) são ignorados.
+   */
+  private async applyChoice(choice: SessionConfigChoice): Promise<void> {
+    const order = ['model', 'thought_level', 'mode']
+    const categories = Object.keys(choice).sort(
+      (a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99),
+    )
+    for (const category of categories) {
+      const value = choice[category]
+      const option = this.configOptions.find((o) => o.category === category)
+      if (!value || !option || option.currentValue === value) continue
+      if (!option.options.some((o) => o.value === value)) continue
+      try {
+        await this.setConfig(option.id, value, false)
+      } catch {
+        // Mantém o padrão do agente; o usuário pode trocar pela barra do chat.
+      }
     }
   }
 
@@ -248,7 +323,19 @@ export class AgentSession {
       .client({ name: 'clawos' })
       .onNotification(acp.methods.client.session.update, (ctx) => {
         if (this.replaying) return
-        for (const event of normalizeUpdate(ctx.params.update)) this.emit(event)
+        const { update } = ctx.params
+        // O agente pode mudar de modo sozinho (ex.: o Claude sai do modo plano).
+        if (update.sessionUpdate === 'current_mode_update') {
+          this.configOptions = this.configOptions.map((o) =>
+            o.category === 'mode' ? { ...o, currentValue: update.currentModeId } : o,
+          )
+          this.emit({ type: 'config_options', options: this.configOptions })
+          return
+        }
+        for (const event of normalizeUpdate(update)) {
+          if (event.type === 'config_options') this.configOptions = event.options
+          this.emit(event)
+        }
       })
       .onRequest(acp.methods.client.session.requestPermission, async (ctx) => {
         const requestId = randomUUID()
@@ -290,6 +377,17 @@ export class AgentSession {
     this.setStatus('error')
   }
 }
+
+const IMAGE_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+}
+
+/** Limite das APIs dos modelos para uma imagem no prompt. */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 /** Mensagem legível, incluindo o detalhe que o ACP manda em `data` (ex.: stderr do CLI). */
 export function describeError(error: unknown): string {

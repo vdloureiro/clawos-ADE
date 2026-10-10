@@ -173,6 +173,10 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         working={working}
         cwd={info.cwd}
         loadFiles={() => window.clawos.invoke('projects:files', info.projectId)}
+        configOptions={chat.configOptions}
+        onConfigChange={async (configId, value) => {
+          await window.clawos.invoke('session:setConfig', sessionId, configId, value)
+        }}
         onSend={send}
         onStop={stop}
       />

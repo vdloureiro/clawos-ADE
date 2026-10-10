@@ -1,6 +1,7 @@
 import type {
   PermissionOptionView,
   PlanEntryView,
+  SessionConfigOption,
   SessionEvent,
   SessionInfo,
   SessionStatus,
@@ -29,6 +30,8 @@ export interface ChatState {
   info: SessionInfo
   status: SessionStatus
   items: ChatItem[]
+  /** Modelo, modo de permissão etc. que o agente aceita nesta sessão. */
+  configOptions?: SessionConfigOption[]
 }
 
 let counter = 0
@@ -43,6 +46,9 @@ export function applyEvent(state: ChatState, event: SessionEvent): ChatState {
   switch (event.type) {
     case 'status_change':
       return { ...state, status: event.status }
+
+    case 'config_options':
+      return { ...state, configOptions: event.options }
 
     case 'user_message': {
       const next = appendText(state, 'user', event.id, event.text)
