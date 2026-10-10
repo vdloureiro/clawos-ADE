@@ -198,7 +198,7 @@ export function ChatInput({
 
   return (
     <div
-      className="relative border-t p-3"
+      className="@container relative border-t p-3"
       onDragOver={(e) => {
         e.preventDefault()
         setDragging(true)
@@ -295,15 +295,15 @@ export function ChatInput({
               ? 'Sessão indisponível — veja o erro acima'
               : disabled
                 ? 'Conectando ao agente…'
-                : 'Peça algo ao agente — @ menciona arquivos; cole ou arraste arquivos e imagens'
+                : 'Peça algo ao agente…'
           }
           rows={1}
           className="field-sizing-content max-h-48 min-h-6 w-full resize-none bg-transparent text-sm outline-none select-text placeholder:text-muted-foreground"
         />
-        <div className="mt-1.5 flex items-center gap-0.5">
+        <div className="mt-1.5 flex min-w-0 items-center gap-0.5">
           <button
             type="button"
-            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Anexar arquivos"
             onClick={() => void pickFiles()}
           >
@@ -311,7 +311,7 @@ export function ChatInput({
           </button>
           <button
             type="button"
-            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Mencionar arquivo do projeto"
             onClick={() => {
               const value = `${text}${text && !text.endsWith(' ') ? ' ' : ''}@`
@@ -324,7 +324,7 @@ export function ChatInput({
           </button>
           <VoiceButton onText={insertDictation} onError={setError} />
           {configOptions.length > 0 && onConfigChange && (
-            <div className="ml-1 flex min-w-0 items-center gap-0.5 border-l pl-1.5">
+            <div className="ml-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden border-l pl-1.5">
               <ConfigPickers
                 options={configOptions}
                 disabled={disabled}
@@ -338,7 +338,7 @@ export function ChatInput({
               />
             </div>
           )}
-          <div className="ml-auto">
+          <div className="ml-auto shrink-0 pl-1">
             {working ? (
               <Button
                 size="icon"

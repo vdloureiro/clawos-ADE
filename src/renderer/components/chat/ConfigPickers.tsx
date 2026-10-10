@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useLayoutEffect,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { Brain, Check, ChevronDown, ShieldAlert, ShieldCheck, Zap } from 'lucide-react'
 import type { SessionConfigOption } from '@shared/types'
 import { cn } from '@/lib/utils'
@@ -97,11 +105,12 @@ function ModePicker({
   return (
     <Dropdown
       disabled={disabled}
-      title="Permissões do agente"
+      title={`Permissões do agente: ${info.label}`}
       label={
         <>
-          <Icon className={cn('size-3.5', info.auto && 'text-amber-500')} />
-          {info.label}
+          <Icon className={cn('size-3.5 shrink-0', info.auto && 'text-amber-500')} />
+          {/* Painel estreito: só o ícone (o nome aparece no menu e na dica). */}
+          <span className="hidden truncate @sm:inline">{info.label}</span>
         </>
       }
     >
@@ -155,9 +164,13 @@ function ModelPicker({
       title="Modelo"
       label={
         <>
-          {modelLabel(current ?? { value: model.currentValue, name: model.currentValue })}
+          <span className="truncate">
+            {modelLabel(current ?? { value: model.currentValue, name: model.currentValue })}
+          </span>
           {currentEffort && effort?.currentValue !== 'default' && (
-            <span className="text-muted-foreground/70">· {effortLabel(currentEffort.name)}</span>
+            <span className="hidden shrink-0 text-muted-foreground/70 @lg:inline">
+              · {effortLabel(currentEffort.name)}
+            </span>
           )}
         </>
       }
@@ -250,11 +263,34 @@ function Dropdown({
   children: (close: () => void) => ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<CSSProperties>({})
+  const button = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+
+  // O menu vai para o body (position: fixed) para não ser cortado pelo painel do dock;
+  // abre acima do botão e fica sempre dentro da janela.
+  useLayoutEffect(() => {
+    if (!open || !button.current) return
+    const place = () => {
+      const rect = button.current!.getBoundingClientRect()
+      const width = Math.min(288, window.innerWidth - 16)
+      setStyle({
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        bottom: window.innerHeight - rect.top + 4,
+        width,
+        maxHeight: Math.max(160, rect.top - 16),
+      })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (!button.current?.contains(target) && !menu.current?.contains(target)) setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
     window.addEventListener('mousedown', onDown)
@@ -264,27 +300,35 @@ function Dropdown({
       window.removeEventListener('keydown', onKey)
     }
   }, [open])
+
   return (
-    <div className="relative min-w-0" ref={ref}>
+    <>
       <button
+        ref={button}
         type="button"
         disabled={disabled}
         title={title}
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex max-w-56 items-center gap-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent',
+          'flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent',
           open && 'bg-accent text-foreground',
         )}
       >
         {label}
         <ChevronDown className="size-3 shrink-0 opacity-60" />
       </button>
-      {open && (
-        <div className="absolute bottom-full left-0 z-40 mb-1 max-h-96 w-72 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-lg">
-          {children(() => setOpen(false))}
-        </div>
-      )}
-    </div>
+      {open &&
+        createPortal(
+          <div
+            ref={menu}
+            style={style}
+            className="fixed z-50 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+          >
+            {children(() => setOpen(false))}
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
 

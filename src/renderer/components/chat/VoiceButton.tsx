@@ -126,7 +126,7 @@ export function VoiceButton({
       type="button"
       disabled={disabled}
       className={cn(
-        'rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40',
+        'shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40',
       )}
       title="Ditar mensagem (transcrição local)"
       onClick={() => void start()}

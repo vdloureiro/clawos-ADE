@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- Barra de mensagem responsiva: com muitos painéis abertos, os seletores de modelo e permissão encolhem (ficam só com o ícone) em vez de sobrepor os botões, e os menus abrem por cima do painel, sempre inteiros na tela.
+
 ## 0.1.5
 
 - **Seleção de modelo** na barra do chat (ex.: Opus, Sonnet, Haiku no Claude; os modelos do Codex), com o nível de raciocínio. A lista vem do próprio CLI, então modelos novos aparecem sozinhos.
