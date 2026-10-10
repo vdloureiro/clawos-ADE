@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Logos reais dos agentes (Claude e Codex), em preto e branco, no lugar das letras: abas, cabeçalho da conversa, menu de novo agente, tarefas e configurações.
+
 ## 0.1.3
 
 - **Tarefas por projeto**, estilo Todoist: adição rápida, prioridade P1–P4, datas (Hoje, Amanhã, atrasadas), descrição, reordenar arrastando e concluídas recolhidas. O item **Tarefas** fica logo abaixo do nome do projeto na barra lateral, com a contagem de abertas.

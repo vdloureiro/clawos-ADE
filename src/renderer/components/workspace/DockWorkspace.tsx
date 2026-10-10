@@ -13,6 +13,7 @@ import {
 import 'dockview-react/dist/styles/dockview.css'
 import { Maximize2, Minimize2, Plus, X } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
+import { AgentLogo } from '@/components/agents/AgentLogo'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { Button } from '@/components/ui/button'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -58,12 +59,11 @@ function ChatTab({ api, params }: IDockviewPanelHeaderProps<ChatParams>) {
         className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[chat?.status ?? 'starting'])}
       />
       {chat && (
-        <span
-          className="text-[10px] font-semibold"
-          style={{ color: AGENT_META[chat.info.agentId].color }}
-        >
-          {AGENT_META[chat.info.agentId].letter}
-        </span>
+        <AgentLogo
+          agentId={chat.info.agentId}
+          className="size-3 shrink-0 text-foreground/80"
+          aria-label={AGENT_META[chat.info.agentId].name}
+        />
       )}
       <span className="truncate">{chat?.info.title ?? api.title}</span>
       <button
