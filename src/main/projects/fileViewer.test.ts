@@ -40,3 +40,24 @@ describe('readForViewer', () => {
     expect(readForViewer(join(dir, 'sumiu.txt')).kind).toBe('missing')
   })
 })
+
+describe('writeFromViewer', () => {
+  it('salva e detecta conflito com mudança externa', async () => {
+    const { writeFromViewer } = await import('./fileViewer')
+    const file = join(dir, 'editar.txt')
+    writeFileSync(file, 'v1')
+    const first = readForViewer(file)
+    const saved = writeFromViewer(file, 'v2', first.mtime)
+    expect(saved.ok).toBe(true)
+    expect(readForViewer(file).text).toBe('v2')
+    // A versão que a aba tinha (first.mtime) ficou velha: conflito, sem sobrescrever.
+    await new Promise((r) => setTimeout(r, 20))
+    writeFileSync(file, 'externo')
+    const conflict = writeFromViewer(file, 'v3', saved.mtime)
+    expect(conflict.ok).toBe(false)
+    expect(readForViewer(file).text).toBe('externo')
+    // Forçar (null) sobrescreve.
+    expect(writeFromViewer(file, 'v3', null).ok).toBe(true)
+    expect(readForViewer(file).text).toBe('v3')
+  })
+})

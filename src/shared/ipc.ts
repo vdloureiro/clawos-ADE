@@ -65,6 +65,11 @@ export interface InvokeChannels {
   'files:read': { args: [path: string]; result: FileContent }
   /** Caminhos citados pelo agente → absolutos, se existirem (null se não). */
   'files:resolve': { args: [paths: string[], cwd: string]; result: (string | null)[] }
+  /** Salva a edição; `expectedMtime` (null = forçar) evita sobrescrever mudança externa. */
+  'files:write': {
+    args: [path: string, text: string, expectedMtime: number | null]
+    result: { ok: true; mtime: number } | { ok: false; conflict: true; mtime: number }
+  }
   'files:watch': { args: [path: string]; result: void }
   'files:unwatch': { args: [path: string]; result: void }
 

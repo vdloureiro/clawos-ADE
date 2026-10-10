@@ -162,39 +162,26 @@
   --dv-drag-over-background-color: color-mix(in oklch, var(--ring) 30%, transparent);
 }
 
-/* Aba de arquivo: código com número de linha. */
-.file-code pre {
-  background: transparent !important;
-  white-space: pre;
+/* Cores de sintaxe do editor de arquivos (estilo GitHub). */
+:root {
+  --cm-comment: #6e7781;
+  --cm-keyword: #cf222e;
+  --cm-string: #0a3069;
+  --cm-number: #0550ae;
+  --cm-function: #8250df;
+  --cm-type: #953800;
+  --cm-property: #0550ae;
+  --cm-tag: #116329;
+  --cm-invalid: #cf222e;
 }
-.file-code code {
-  counter-reset: line;
-}
-.file-code .line {
-  display: inline-block;
-  min-width: 100%;
-  padding-right: 1rem;
-}
-.file-code .line::before {
-  counter-increment: line;
-  content: counter(line);
-  display: inline-block;
-  width: 3.25em;
-  margin-right: 1.25em;
-  text-align: right;
-  color: var(--muted-foreground);
-  opacity: 0.6;
-  user-select: none;
-}
-.file-code .line.target {
-  background: color-mix(in oklab, var(--color-amber-500) 18%, transparent);
-}
-.file-code span {
-  color: var(--shiki-light);
-}
-.dark .file-code span {
-  color: var(--shiki-dark);
-}
-.file-code .line::before {
-  color: var(--muted-foreground);
+.dark {
+  --cm-comment: #8b949e;
+  --cm-keyword: #ff7b72;
+  --cm-string: #a5d6ff;
+  --cm-number: #79c0ff;
+  --cm-function: #d2a8ff;
+  --cm-type: #ffa657;
+  --cm-property: #79c0ff;
+  --cm-tag: #7ee787;
+  --cm-invalid: #f85149;
 }

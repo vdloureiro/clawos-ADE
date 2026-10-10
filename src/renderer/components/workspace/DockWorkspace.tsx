@@ -28,6 +28,7 @@ import {
 import { fileName, isFilePanel } from '@/lib/filePanels'
 import { sanitizeLayout } from '@/lib/layout'
 import { cn } from '@/lib/utils'
+import { useDirtyFiles } from '@/stores/dirtyFiles'
 import { useSessionsStore } from '@/stores/sessions'
 import { useThemeStore } from '@/stores/theme'
 
@@ -65,6 +66,7 @@ function makeFileDockPanel(projectId: string) {
 }
 
 function FileTab({ api, params }: IDockviewPanelHeaderProps<FileParams>) {
+  const dirty = useDirtyFiles((s) => Boolean(s.dirty[params.path]))
   return (
     <div
       className="group flex h-full max-w-56 items-center gap-1.5 px-2.5 text-xs"
@@ -74,14 +76,22 @@ function FileTab({ api, params }: IDockviewPanelHeaderProps<FileParams>) {
       <span className="truncate">{fileName(params.path)}</span>
       <button
         type="button"
-        className="ml-1 rounded p-0.5 opacity-0 group-hover:opacity-70 hover:bg-accent hover:opacity-100"
-        title="Fechar"
+        className={cn(
+          'ml-1 rounded p-0.5 hover:bg-accent',
+          dirty ? 'text-amber-500' : 'opacity-0 group-hover:opacity-70 hover:opacity-100',
+        )}
+        title={dirty ? 'Alterações não salvas — fechar' : 'Fechar'}
         onClick={(e) => {
           e.stopPropagation()
+          if (dirty && !confirm(`Descartar as alterações não salvas em ${fileName(params.path)}?`))
+            return
           api.close()
         }}
       >
-        <X className="size-3" />
+        {dirty ? (
+          <span className="block size-3 text-center leading-3 group-hover:hidden">●</span>
+        ) : null}
+        <X className={cn('size-3', dirty && 'hidden group-hover:block')} />
       </button>
     </div>
   )

@@ -3,9 +3,11 @@ import {
   openSync,
   readFileSync,
   readSync,
+  renameSync,
   statSync,
   unwatchFile,
   watchFile,
+  writeFileSync,
 } from 'node:fs'
 import { extname, isAbsolute, resolve } from 'node:path'
 import { homedir } from 'node:os'
@@ -80,6 +82,32 @@ export function readForViewer(path: string): FileContent {
   }
   if (looksBinary(head)) return { ...base, kind: 'binary' }
   return { ...base, kind: 'text', text: readFileSync(path, 'utf8') }
+}
+
+export type WriteResult = { ok: true; mtime: number } | { ok: false; conflict: true; mtime: number }
+
+/**
+ * Salva o texto editado na aba. Se o arquivo mudou no disco desde a versão que a aba
+ * carregou (`expectedMtime`), não sobrescreve: devolve conflito para a UI perguntar.
+ * Grava num temporário e renomeia, para nunca deixar o arquivo pela metade.
+ */
+export function writeFromViewer(
+  path: string,
+  text: string,
+  expectedMtime: number | null,
+): WriteResult {
+  let current: number | null = null
+  try {
+    current = statSync(path).mtimeMs
+  } catch {
+    // Arquivo apagado enquanto a aba estava aberta: salvar recria.
+  }
+  if (expectedMtime !== null && current !== null && Math.abs(current - expectedMtime) > 1)
+    return { ok: false, conflict: true, mtime: current }
+  const temp = `${path}.clawos-${process.pid}.tmp`
+  writeFileSync(temp, text, 'utf8')
+  renameSync(temp, path)
+  return { ok: true, mtime: statSync(path).mtimeMs }
 }
 
 /**

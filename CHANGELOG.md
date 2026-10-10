@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8
+
+- **Editar arquivos na aba**: o arquivo aberto a partir do chat agora é editável (editor com destaque, número de linha, desfazer, busca com ⌘F). ⌘S ou o botão Salvar grava no disco; a aba mostra ● enquanto houver alteração não salva e pergunta antes de fechar.
+- Markdown abre formatado, com o botão **Editar** para mudar o texto.
+- Se o agente alterar o arquivo enquanto você edita, aparece um aviso para escolher entre a versão do disco e a sua; nada é sobrescrito sem perguntar.
+
 ## 0.1.7
 
 - **Arquivos viram links no chat**, como no VS Code: arquivos que o agente cria, edita ou lê, nomes de arquivo citados na resposta (ex.: `consultas/clientes.sql`, `NOTAS.md`, `app.ts:42`) e anexos abrem numa aba ao lado da conversa.

@@ -12,7 +12,12 @@ import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
 import { listProjectFiles } from '../projects/files'
-import { FileWatchers, readForViewer, resolveExisting } from '../projects/fileViewer'
+import {
+  FileWatchers,
+  readForViewer,
+  resolveExisting,
+  writeFromViewer,
+} from '../projects/fileViewer'
 import { getServices, sendToAll } from '../services'
 import { taskPrompt } from '../tasks/TaskRepo'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
@@ -132,6 +137,7 @@ export function registerIpcHandlers(): void {
   const watchers = new FileWatchers((path) => sendToAll('files:changed', { path }))
   handle('files:read', (path) => readForViewer(path))
   handle('files:resolve', (paths, cwd) => resolveExisting(paths, cwd))
+  handle('files:write', (path, text, expectedMtime) => writeFromViewer(path, text, expectedMtime))
   handle('files:watch', (path) => watchers.watch(path))
   handle('files:unwatch', (path) => watchers.unwatch(path))
 
