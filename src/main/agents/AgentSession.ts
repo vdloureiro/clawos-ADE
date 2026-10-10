@@ -9,6 +9,7 @@ import type { AgentId, SessionEvent, SessionStatus } from '@shared/types'
 import type { CompiledSession } from '../compiler/ConfigCompiler'
 import { resolveCli } from './detect'
 import { normalizePermissionOptions, normalizeUpdate } from './normalize'
+import { openSession } from './openSession'
 import { getAgent } from './registry'
 import { getShellEnv } from './shellEnv'
 
@@ -36,6 +37,8 @@ export interface AgentSessionOptions {
   compiled: CompiledSession
   /** Id da sessão ACP anterior, para retomar a conversa (`session/resume`). */
   resumeAcpSessionId: string | null
+  /** A conversa já tem mensagens (para avisar se o contexto do agente não puder ser retomado). */
+  hasHistory: boolean
   emit: (event: SessionEvent) => void
   /** Chamado quando o agente atribui o id da sessão ACP (para persistir). */
   onAcpSessionId: (acpSessionId: string) => void
@@ -89,35 +92,35 @@ export class AgentSession {
         _meta: compiled.meta,
       }
 
-      if (resumeAcpSessionId && caps?.sessionCapabilities?.resume) {
+      const opened = await openSession(resumeAcpSessionId, {
         // Retoma o contexto sem reenviar o histórico (a UI já o tem do banco).
-        await connection.agent.request(acp.methods.agent.session.resume, {
-          sessionId: resumeAcpSessionId,
-          ...base,
-        })
-        this.acpSessionId = resumeAcpSessionId
-      } else if (resumeAcpSessionId && caps?.loadSession) {
+        resume: caps?.sessionCapabilities?.resume
+          ? (sessionId) =>
+              connection.agent.request(acp.methods.agent.session.resume, { sessionId, ...base })
+          : undefined,
         // `session/load` reenvia o histórico como updates; descartamos para não duplicar.
-        this.replaying = true
-        try {
-          await connection.agent.request(acp.methods.agent.session.load, {
-            sessionId: resumeAcpSessionId,
-            ...base,
-          })
-        } finally {
-          this.replaying = false
-        }
-        this.acpSessionId = resumeAcpSessionId
-      } else {
-        const session = await connection.agent.request(acp.methods.agent.session.new, base)
-        this.acpSessionId = session.sessionId
-        this.options.onAcpSessionId(session.sessionId)
-        if (resumeAcpSessionId) {
-          this.emit({
-            type: 'notice',
-            text: 'Este agente não suporta retomar conversas; o contexto anterior não foi carregado.',
-          })
-        }
+        load: caps?.loadSession
+          ? async (sessionId) => {
+              this.replaying = true
+              try {
+                return await connection.agent.request(acp.methods.agent.session.load, {
+                  sessionId,
+                  ...base,
+                })
+              } finally {
+                this.replaying = false
+              }
+            }
+          : undefined,
+        create: () => connection.agent.request(acp.methods.agent.session.new, base),
+      })
+      this.acpSessionId = opened.sessionId
+      if (opened.created) this.options.onAcpSessionId(opened.sessionId)
+      if (opened.contextLost && this.options.hasHistory) {
+        this.emit({
+          type: 'notice',
+          text: 'Não foi possível retomar o contexto anterior do agente; a conversa continua numa sessão nova.',
+        })
       }
       for (const text of compiled.warnings) this.emit({ type: 'notice', text })
       this.setStatus('ready')

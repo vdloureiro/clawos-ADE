@@ -226,6 +226,7 @@ export class SessionManager {
           cwd: summary.cwd,
           compiled,
           resumeAcpSessionId,
+          hasHistory: items.some((i) => i.kind === 'user'),
           emit,
           onAcpSessionId: (acpSessionId) => this.deps.repo.update(summary.id, { acpSessionId }),
         })
