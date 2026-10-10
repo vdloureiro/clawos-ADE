@@ -39,7 +39,12 @@ jobs:
         shell: bash
         run: |
           EXTRA=""
-          if [ "$RUNNER_OS" = "macOS" ] && [ -z "$CSC_LINK" ]; then
+          # Secrets ausentes chegam como variáveis vazias; o electron-builder trataria
+          # CSC_LINK="" como um caminho de certificado. Remove as vazias.
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          if [ "$RUNNER_OS" = "macOS" ] && [ -z "${CSC_LINK:-}" ]; then
             # Sem certificado Developer ID: assinatura ad-hoc, sem notarização.
             EXTRA="-c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false"
             export CSC_IDENTITY_AUTO_DISCOVERY=false
