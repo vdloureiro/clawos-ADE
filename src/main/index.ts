@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, powerMonitor, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { closeDb } from './db'
 import { registerIpcHandlers } from './ipc'
@@ -51,6 +51,12 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   initServices()
+  // Desligar/reiniciar o Mac: grava tudo e sai sem a pergunta de sessões ativas, que
+  // bloquearia o desligamento.
+  powerMonitor.on('shutdown', () => {
+    getServices().sessions.flushAll()
+    quitConfirmed = true
+  })
   handleMlProtocol(join(__dirname, '../renderer'))
   registerIpcHandlers()
   buildMenu()

@@ -217,6 +217,11 @@ export class SessionManager {
     return [...this.live.values()].filter((l) => l.agent).length
   }
 
+  /** Grava agora o histórico de todas as conversas abertas (ex.: o Mac vai desligar). */
+  flushAll(): void {
+    for (const id of this.live.keys()) this.flush(id)
+  }
+
   stopAll(): void {
     for (const id of [...this.live.keys()]) this.stop(id)
   }
@@ -320,7 +325,14 @@ export class SessionManager {
         last?.kind === 'assistant' ? last.text : 'Turno concluído.',
       )
     }
-    if (event.type === 'turn_end' || event.type === 'error') {
+    // Mensagem do usuário, fim de turno, erro e pedido de permissão vão direto para o
+    // disco; o streaming da resposta é gravado a cada segundo.
+    if (
+      event.type === 'user_message' ||
+      event.type === 'turn_end' ||
+      event.type === 'error' ||
+      event.type === 'permission_request'
+    ) {
       this.flush(id)
     } else {
       this.scheduleSave(id)

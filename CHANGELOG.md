@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- A mensagem enviada, o fim de cada resposta e os pedidos de permissão são gravados no disco na hora (antes, em até 1 segundo). Mesmo se o app for fechado à força ou travar, nada do que você enviou se perde.
+- Ao desligar ou reiniciar o Mac com agentes rodando, o Clawos grava tudo e fecha sem a pergunta de sessões ativas (que podia bloquear o desligamento).
+
 ## 0.1.8
 
 - **Editar arquivos na aba**: o arquivo aberto a partir do chat agora é editável (editor com destaque, número de linha, desfazer, busca com ⌘F). ⌘S ou o botão Salvar grava no disco; a aba mostra ● enquanto houver alteração não salva e pergunta antes de fechar.
