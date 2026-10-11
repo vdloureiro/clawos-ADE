@@ -7,7 +7,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, systemPreference
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
 import packageJson from '../../../package.json'
 import { detectAll, resolveCli } from '../agents/detect'
-import { getAgent } from '../agents/registry'
+import { getAgent, installProcess } from '../agents/registry'
 import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
 import { testMcpServer } from '../mcp/testMcp'
@@ -143,6 +143,10 @@ export function registerIpcHandlers(): void {
 
   // Agentes -----------------------------------------------------------------
   handle('agents:status', (refresh) => detectAll(refresh))
+  handle('agents:install', (agentId, cols, rows) => {
+    const { file, args, env } = installProcess(getAgent(agentId))
+    return openTerminal(file, args, cols, rows, undefined, env)
+  })
   handle('agents:login', async (agentId, cols, rows) => {
     const agent = getAgent(agentId)
     const cliPath = await resolveCli(agentId)

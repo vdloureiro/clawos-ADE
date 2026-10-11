@@ -76,6 +76,8 @@ export interface InvokeChannels {
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }
   /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
   'agents:login': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
+  /** Roda o instalador oficial do CLI num terminal (id do terminal). */
+  'agents:install': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
 
   'projects:list': { args: []; result: Project[] }
   /** Sem caminho, abre o seletor de pasta. Retorna null se o usuário cancelar. */

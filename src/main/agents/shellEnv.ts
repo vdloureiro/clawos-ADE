@@ -52,6 +52,11 @@ export function mergePath(...parts: (string | null | undefined)[]): string {
   return [...seen].join(delimiter)
 }
 
+/** Relê o PATH do shell na próxima consulta (após instalar um CLI). */
+export function resetShellEnv(): void {
+  cached = null
+}
+
 export function getShellEnv(): Promise<NodeJS.ProcessEnv> {
   cached ??= readLoginShellPath().then((shellPath) => {
     const env = { ...process.env }

@@ -19,8 +19,9 @@ export async function openTerminal(
   cols: number,
   rows: number,
   cwd = process.env['HOME'] ?? process.cwd(),
+  extraEnv: Record<string, string> = {},
 ): Promise<string> {
-  const env = await getShellEnv()
+  const env = { ...(await getShellEnv()), ...extraEnv }
   const id = randomUUID()
   const term = pty.spawn(file, args, {
     name: 'xterm-256color',

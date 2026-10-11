@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import type { AgentId, AgentStatus } from '@shared/types'
-import { AGENTS, type AgentDefinition, type GlobalMcp } from './registry'
-import { getShellEnv, which } from './shellEnv'
+import { AGENTS, installCommand, type AgentDefinition, type GlobalMcp } from './registry'
+import { getShellEnv, resetShellEnv, which } from './shellEnv'
 
 interface RunResult {
   code: number
@@ -43,7 +43,7 @@ export async function detectAgent(agent: AgentDefinition): Promise<AgentStatus> 
     version: null,
     loggedIn: null,
     detail: null,
-    installHint: agent.installHint,
+    installHint: installCommand(agent),
     installUrl: agent.installUrl,
   }
 
@@ -70,6 +70,8 @@ let cache: Promise<AgentStatus[]> | null = null
 
 export function detectAll(refresh = false): Promise<AgentStatus[]> {
   if (refresh || !cache) {
+    // Um CLI recém-instalado pode ter mudado o PATH (ex.: ~/.local/bin no .zshrc).
+    if (refresh) resetShellEnv()
     cache = Promise.all(Object.values(AGENTS).map(detectAgent))
   }
   return cache

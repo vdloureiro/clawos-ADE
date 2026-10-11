@@ -11,6 +11,9 @@ interface UiState {
   settingsProjectId: string | null
   globalSettingsOpen: boolean
   newProjectOpen: boolean
+  /** Assistente de primeiro acesso (instalar agentes, entrar, criar projeto). */
+  onboardingOpen: boolean
+  setOnboardingOpen: (open: boolean) => void
   setPaletteOpen: (open: boolean) => void
   openProjectSettings: (projectId: string | null) => void
   setGlobalSettingsOpen: (open: boolean) => void
@@ -24,6 +27,8 @@ export const useUiStore = create<UiState>((set) => ({
   settingsProjectId: null,
   globalSettingsOpen: false,
   newProjectOpen: false,
+  onboardingOpen: false,
+  setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   openProjectSettings: (settingsProjectId) => set({ settingsProjectId }),
   setGlobalSettingsOpen: (globalSettingsOpen) => set({ globalSettingsOpen }),

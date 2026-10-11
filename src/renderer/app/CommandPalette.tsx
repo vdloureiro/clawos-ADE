@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Command } from 'cmdk'
-import { FolderPlus, ListTodo, MessageSquare, MessageSquarePlus, Settings } from 'lucide-react'
+import {
+  FolderPlus,
+  ListTodo,
+  MessageSquare,
+  MessageSquarePlus,
+  Settings,
+  Sparkles,
+} from 'lucide-react'
 import type { SessionSummary } from '@shared/types'
 import { useActiveProject, useProjectsStore } from '@/stores/projects'
 import { newSessionInDock, openInDock } from '@/lib/dock'
@@ -64,6 +71,12 @@ export function CommandPalette() {
               onSelect={run(() => setView({ kind: 'tasks', projectId: null }))}
             >
               <ListTodo className="size-4" /> Todas as tarefas
+            </Command.Item>
+            <Command.Item
+              className={item}
+              onSelect={run(() => useUiStore.getState().setOnboardingOpen(true))}
+            >
+              <Sparkles className="size-4" /> Primeiros passos (instalar e conectar agentes)
             </Command.Item>
             {activeProject && (
               <Command.Item

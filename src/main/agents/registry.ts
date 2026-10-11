@@ -18,7 +18,8 @@ export interface AgentDefinition {
   statusArgs: string[] | null
   /** Comando oficial de login, executado num terminal visível ao usuário. */
   loginArgs: string[]
-  installHint: string
+  /** Instalador oficial (rodado num terminal dentro do app ou copiado pelo usuário). */
+  install: { posix: string; windows: string }
   installUrl: string
   /** Como resolver quando o agente exige autenticação (erro ACP `auth_required`). */
   authHelp: string
@@ -53,7 +54,10 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     versionArgs: ['--version'],
     statusArgs: ['auth', 'status'],
     loginArgs: ['auth', 'login'],
-    installHint: 'curl -fsSL https://claude.ai/install.sh | bash',
+    install: {
+      posix: 'curl -fsSL https://claude.ai/install.sh | bash',
+      windows: 'irm https://claude.ai/install.ps1 | iex',
+    },
     installUrl: 'https://code.claude.com/docs/en/setup',
     authHelp: 'Entre no Claude pelo botão Entrar em Configurações (roda `claude auth login`).',
     acp: {
@@ -69,7 +73,11 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     versionArgs: ['--version'],
     statusArgs: ['login', 'status'],
     loginArgs: ['login'],
-    installHint: 'npm install -g @openai/codex',
+    // Instalador próprio da OpenAI: não depende de Node.js/npm (máquina nova não tem).
+    install: {
+      posix: 'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+      windows: 'irm https://chatgpt.com/codex/install.ps1 | iex',
+    },
     installUrl: 'https://developers.openai.com/codex/cli',
     authHelp: 'Entre no Codex pelo botão Entrar em Configurações (roda `codex login`).',
     acp: {
@@ -88,13 +96,39 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
     statusArgs: null,
     // Sem argumentos o CLI abre o fluxo interativo de login na primeira execução.
     loginArgs: [],
-    installHint: 'npm install -g @google/gemini-cli',
+    install: {
+      posix: 'npm install -g @google/gemini-cli',
+      windows: 'npm install -g @google/gemini-cli',
+    },
     installUrl: 'https://github.com/google-gemini/gemini-cli',
     // O login com conta Google pessoal foi descontinuado no Gemini CLI (out/2026).
     authHelp:
       'O Gemini CLI precisa de uma API key: crie uma em https://aistudio.google.com/apikey e defina GEMINI_API_KEY no seu ambiente (ou em ~/.gemini/.env). O Clawos não guarda essa chave.',
     acp: { kind: 'native', args: ['--acp'] },
   },
+}
+
+/** Comando de instalação para o sistema atual. */
+export function installCommand(agent: AgentDefinition, platform = process.platform): string {
+  return platform === 'win32' ? agent.install.windows : agent.install.posix
+}
+
+/** Programa e argumentos para rodar o instalador num terminal. */
+export function installProcess(
+  agent: AgentDefinition,
+  platform = process.platform,
+): { file: string; args: string[]; env: Record<string, string> } {
+  const command = installCommand(agent, platform)
+  // Sem perguntas no fim (o instalador do Codex oferece abrir o CLI, o que travaria aqui).
+  const env = { CODEX_NON_INTERACTIVE: '1' }
+  if (platform === 'win32')
+    return {
+      env,
+      file: 'powershell.exe',
+      args: ['-ExecutionPolicy', 'ByPass', '-NoProfile', '-Command', command],
+    }
+  // bash explícito: o instalador do Claude exige bash, independente do shell do usuário.
+  return { file: '/bin/bash', args: ['-c', command], env }
 }
 
 export function getAgent(id: AgentId): AgentDefinition {

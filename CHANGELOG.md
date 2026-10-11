@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- **Assistente de primeiro acesso**: no primeiro uso, o Clawos guia em três passos — instalar os agentes, entrar com sua conta e criar o primeiro projeto. Reabra quando quiser pela busca (⌘K → "Primeiros passos").
+- **Instalação dos agentes dentro do app**: o botão "Instalar" roda o instalador oficial num terminal do próprio Clawos, sem copiar comandos. O Codex agora usa o instalador oficial da OpenAI, que não precisa de Node.js/npm.
+- O status dos agentes se atualiza sozinho depois de instalar ou entrar (e ao voltar para a janela); antes era preciso reiniciar o app para ele enxergar um agente recém-instalado.
+- Copiar um comando confirma a cópia (✓ Copiado), e "Verificar novamente" mostra que está verificando e quando terminou.
+
 ## 0.1.9
 
 - A mensagem enviada, o fim de cada resposta e os pedidos de permissão são gravados no disco na hora (antes, em até 1 segundo). Mesmo se o app for fechado à força ou travar, nada do que você enviou se perde.

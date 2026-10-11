@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-import { AGENTS, getAgent } from './registry'
+import { AGENTS, getAgent, installCommand, installProcess } from './registry'
 
 const require = createRequire(import.meta.url)
 
@@ -11,8 +11,22 @@ describe('registry', () => {
       expect(agent.id).toBe(key)
       expect(agent.cli).not.toBe('')
       expect(Array.isArray(agent.loginArgs)).toBe(true)
-      expect(agent.installHint).not.toBe('')
+      expect(agent.install.posix).not.toBe('')
+      expect(agent.install.windows).not.toBe('')
     }
+  })
+
+  it('instaladores oficiais sem depender de npm (Claude e Codex)', () => {
+    expect(installCommand(getAgent('claude'), 'darwin')).toBe(
+      'curl -fsSL https://claude.ai/install.sh | bash',
+    )
+    expect(installCommand(getAgent('codex'), 'darwin')).not.toContain('npm')
+    expect(installProcess(getAgent('codex'), 'darwin')).toEqual({
+      file: '/bin/bash',
+      args: ['-c', 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'],
+      env: { CODEX_NON_INTERACTIVE: '1' },
+    })
+    expect(installProcess(getAgent('claude'), 'win32').file).toBe('powershell.exe')
   })
 
   it('o módulo de cada adaptador embutido existe em node_modules', () => {

@@ -1,23 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import type { AgentId } from '@shared/types'
 import { Button } from '@/components/ui/button'
 
 /**
- * Terminal real rodando o comando oficial de login do CLI (ex.: `claude auth login`).
- * O Clawos não vê nem guarda credenciais: o próprio CLI cuida de tudo.
+ * Terminal real rodando um comando oficial do CLI: o instalador (`install`) ou o login
+ * (`login`, ex.: `claude auth login`). O Clawos não vê nem guarda credenciais: o próprio
+ * CLI cuida de tudo.
  */
-export function LoginTerminal({
+export function AgentTerminal({
   agentId,
   agentName,
+  action,
   onClose,
 }: {
   agentId: AgentId
   agentName: string
-  onClose: () => void
+  action: 'install' | 'login'
+  onClose: (succeeded: boolean) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [exitCode, setExitCode] = useState<number | null>(null)
@@ -51,7 +55,12 @@ export function LoginTerminal({
     window.addEventListener('resize', onResize)
 
     void window.clawos
-      .invoke('agents:login', agentId, term.cols, term.rows)
+      .invoke(
+        action === 'install' ? 'agents:install' : 'agents:login',
+        agentId,
+        term.cols,
+        term.rows,
+      )
       .then((id) => {
         terminalId = id
       })
@@ -66,36 +75,62 @@ export function LoginTerminal({
       if (terminalId) void window.clawos.invoke('terminal:kill', terminalId)
       term.dispose()
     }
-  }, [agentId])
+  }, [agentId, action])
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+  // Portal: dentro do assistente ou de um painel, `fixed` ficaria preso (e cortado).
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6">
       <div className="flex h-[480px] w-full max-w-3xl flex-col overflow-hidden rounded-lg border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b px-4 py-2">
           <div className="text-sm font-medium">
-            Entrar no {agentName}
+            {action === 'install' ? `Instalando o ${agentName}` : `Entrar no ${agentName}`}
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              login oficial do CLI — o Clawos não vê suas credenciais
+              {action === 'install'
+                ? 'instalador oficial — pode levar um minuto'
+                : 'login oficial do CLI — o Clawos não vê suas credenciais'}
             </span>
           </div>
-          <Button variant="ghost" size="icon" className="size-7" onClick={onClose} title="Fechar">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => onClose(exitCode === 0)}
+            title="Fechar"
+          >
             <X />
           </Button>
         </div>
-        <div className="min-h-0 flex-1 bg-[#0b0b0c] p-2">
+        <div className="min-h-0 flex-1 overflow-hidden bg-[#0b0b0c] p-2">
           <div ref={containerRef} className="h-full w-full" />
         </div>
-        {exitCode !== null && (
-          <div className="flex items-center justify-between border-t px-4 py-2 text-sm">
-            <span className={exitCode === 0 ? 'text-emerald-600' : 'text-red-600'}>
-              {exitCode === 0 ? 'Login concluído.' : `O comando terminou com código ${exitCode}.`}
+        {/* Rodapé sempre presente: o terminal é medido já com ele, sem sobrepor. */}
+        <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-4 text-sm">
+          {exitCode === null ? (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {action === 'install'
+                ? `Instalando o ${agentName}…`
+                : 'Siga as instruções acima (o login abre no navegador).'}
             </span>
-            <Button size="sm" onClick={onClose}>
-              Fechar
-            </Button>
-          </div>
-        )}
+          ) : (
+            <span className={exitCode === 0 ? 'text-emerald-600' : 'text-red-600'}>
+              {exitCode === 0
+                ? action === 'install'
+                  ? `${agentName} instalado.`
+                  : 'Login concluído.'
+                : `O comando terminou com código ${exitCode}. Veja a mensagem acima.`}
+            </span>
+          )}
+          <Button
+            size="sm"
+            variant={exitCode === 0 ? 'default' : 'outline'}
+            onClick={() => onClose(exitCode === 0)}
+          >
+            {exitCode === 0 ? 'Continuar' : exitCode === null ? 'Cancelar' : 'Fechar'}
+          </Button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

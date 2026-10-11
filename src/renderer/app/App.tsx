@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
 import type { AppInfo } from '@shared/types'
+import { Onboarding, onboardingDone } from '@/components/onboarding/Onboarding'
 import { NewProjectWizard } from '@/components/projects/NewProjectWizard'
 import { GlobalSettings } from '@/components/settings/GlobalSettings'
 import { ProjectSettings } from '@/components/settings/ProjectSettings'
@@ -29,6 +30,8 @@ export function App() {
     setGlobalSettingsOpen,
     newProjectOpen,
     setNewProjectOpen,
+    onboardingOpen,
+    setOnboardingOpen,
   } = useUiStore()
   const claude = useAgentsStore((s) => s.statuses.find((a) => a.id === 'claude'))
   const agentAlert = claude && (!claude.installed || claude.loggedIn === false)
@@ -39,8 +42,22 @@ export function App() {
 
   useEffect(() => {
     void window.clawos.invoke('app:info').then(setInfo)
-    void useAgentsStore.getState().refresh()
-    void useProjectsStore.getState().load()
+    // Primeiro acesso (sem projetos): abre o assistente depois de saber o status dos agentes.
+    void Promise.all([
+      useAgentsStore.getState().refresh(),
+      useProjectsStore.getState().load(),
+    ]).then(() => {
+      if (useProjectsStore.getState().projects.length === 0 && !onboardingDone())
+        useUiStore.getState().setOnboardingOpen(true)
+    })
+    // Ao voltar para a janela (ex.: depois de instalar algo no Terminal), reverifica.
+    let lastFocus = 0
+    const onFocus = () => {
+      if (Date.now() - lastFocus < 10_000) return
+      lastFocus = Date.now()
+      void useAgentsStore.getState().refresh(true, { quiet: true })
+    }
+    window.addEventListener('focus', onFocus)
     void useSessionsStore.getState().loadAll()
     const offSessions = subscribeToSessionEvents()
     // Clique numa notificação do SO: leva à sessão que terminou ou pede aprovação.
@@ -50,6 +67,7 @@ export function App() {
     const offCommand = window.clawos.on('app:command', ({ command }) => runCommand(command))
     const offTasks = subscribeToTaskEvents()
     return () => {
+      window.removeEventListener('focus', onFocus)
       offTasks()
       offSessions()
       offFocus()
@@ -93,6 +111,7 @@ export function App() {
         <ProjectSettings projectId={settingsProjectId} onClose={() => openProjectSettings(null)} />
       )}
       {globalSettingsOpen && <GlobalSettings onClose={() => setGlobalSettingsOpen(false)} />}
+      {onboardingOpen && <Onboarding onClose={() => setOnboardingOpen(false)} />}
       {newProjectOpen && <NewProjectWizard onClose={() => setNewProjectOpen(false)} />}
     </div>
   )
