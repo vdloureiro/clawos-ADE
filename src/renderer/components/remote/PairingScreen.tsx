@@ -19,8 +19,22 @@ function guessDeviceName(): string {
  * Tela do navegador antes do pareamento. O código vem no link do QR code mostrado no
  * Clawos do computador (Configurações → Acesso remoto) e vale uma vez, por 10 minutos.
  */
+/** Aceita o link de pareamento inteiro (…/?pair=CÓDIGO) ou só o código. */
+export function parsePairingInput(text: string): string | null {
+  const value = text.trim()
+  if (!value) return null
+  try {
+    const fromUrl = new URL(value).searchParams.get('pair')
+    if (fromUrl) return fromUrl
+  } catch {
+    // Não é um link: tratamos como o próprio código.
+  }
+  return /^[\w-]{20,}$/.test(value) ? value : null
+}
+
 export function PairingScreen() {
-  const code = new URLSearchParams(location.search).get('pair')
+  const [code, setCode] = useState(() => new URLSearchParams(location.search).get('pair'))
+  const [pasted, setPasted] = useState('')
   const [name, setName] = useState(guessDeviceName)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,10 +79,32 @@ export function PairingScreen() {
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           </div>
         ) : (
-          <div className="rounded-lg border bg-card p-4 text-left text-sm text-muted-foreground">
-            No computador, abra o Clawos e vá em{' '}
-            <b className="text-foreground">Configurações → Acesso remoto</b>. Aponte a câmera deste
-            aparelho para o QR code que aparece lá.
+          <div className="space-y-3 text-left">
+            <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+              No computador, abra o Clawos e vá em{' '}
+              <b className="text-foreground">Configurações → Acesso remoto</b>. Aponte a câmera
+              deste aparelho para o QR code que aparece lá.
+            </div>
+            <div className="space-y-1.5">
+              <span className="block text-xs text-muted-foreground">
+                Abriu pelo ícone da tela de início? Cole aqui o link de pareamento (no computador,
+                botão Copiar abaixo do QR code):
+              </span>
+              <input
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                placeholder="https://…/?pair=…"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+              />
+              <Button
+                variant="outline"
+                className="h-10 w-full"
+                disabled={!parsePairingInput(pasted)}
+                onClick={() => setCode(parsePairingInput(pasted))}
+              >
+                Continuar
+              </Button>
+            </div>
           </div>
         )}
         <p className="text-[11px] text-muted-foreground">

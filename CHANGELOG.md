@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+- Ícone do Clawos ao adicionar à tela de início do celular ou tablet: versão própria para iPhone/iPad e Android, que preenche o formato do ícone (sem a borda escura).
+- Pareamento pelo app da tela de início: além do QR code, dá para colar o link de pareamento (o Clawos do computador mostra o link com botão Copiar).
+
 ## 0.3.2
 
 - Acesso remoto: a interface agora se ajusta de verdade à tela do celular (antes o navegador desenhava a página como um desktop e ela ficava minúscula). Campos de texto não dão mais zoom ao tocar no iPhone, a altura acompanha a barra do navegador e há margens para o notch.

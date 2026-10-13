@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Ícone do app instalado no celular (PWA): fundo até a borda, sem cantos nem margem —
+       o iOS/Android aplicam a máscara deles. As garras ficam na área segura central. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1c22"/>
+      <stop offset="1" stop-color="#0b0b0e"/>
+    </linearGradient>
+    <linearGradient id="claw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9a5c"/>
+      <stop offset="1" stop-color="#e2553a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g transform="translate(512 507) scale(1.08) translate(-512 -507)" fill="none" stroke="url(#claw)" stroke-linecap="round" stroke-width="64">
+    <path d="M352 300 C 300 430, 300 600, 380 724"/>
+    <path d="M512 270 C 470 420, 470 610, 540 744"/>
+    <path d="M672 300 C 640 430, 640 600, 700 724"/>
+  </g>
+</svg>

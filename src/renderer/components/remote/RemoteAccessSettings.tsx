@@ -265,6 +265,15 @@ export function RemoteAccessSettings() {
                   </Button>
                 </div>
               </div>
+            ) : null}
+            {status.pairing && qr ? (
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Sem câmera, ou abrindo pelo ícone da tela de início? Copie o link e cole no
+                  aparelho:
+                </p>
+                <CopyCommand command={status.pairing.url} />
+              </div>
             ) : (
               <Button
                 size="sm"
