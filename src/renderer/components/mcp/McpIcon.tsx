@@ -1,7 +1,9 @@
 import { BookOpen, Brain, FolderTree, MonitorPlay, Plug, type LucideIcon } from 'lucide-react'
 import {
   siCloudflare,
+  siClickup,
   siGithub,
+  siMeta,
   siLinear,
   siNotion,
   siSentry,
@@ -25,6 +27,8 @@ const HIGGSFIELD = {
 
 const BRANDS: Record<string, { path: string; title: string; viewBox?: string }> = {
   github: siGithub,
+  'meta-ads': siMeta,
+  clickup: siClickup,
   supabase: siSupabase,
   vercel: siVercel,
   linear: siLinear,

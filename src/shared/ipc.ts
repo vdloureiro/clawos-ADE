@@ -44,6 +44,8 @@ export interface McpTestResult {
   ok: boolean
   tools: string[]
   error: string | null
+  /** Id do catálogo cujo login é feito pelo Claude Code (o Clawos não testa). */
+  claudeLogin?: string
 }
 
 /** Comandos disparados pelo menu da aplicação. */
@@ -92,6 +94,11 @@ export interface InvokeChannels {
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }
   /** Abre um terminal rodando o comando oficial de login do agente. Retorna o id do terminal. */
   'agents:login': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
+  /**
+   * Login de um MCP do catálogo que só o Claude Code pode fazer (ex.: Meta Ads): registra
+   * o servidor no Claude Code, se preciso, e roda `claude mcp login`. Retorna o terminal.
+   */
+  'agents:mcpLogin': { args: [mcpId: string, cols: number, rows: number]; result: string }
   /** Roda o instalador oficial do CLI num terminal (id do terminal). */
   'agents:install': { args: [agentId: AgentId, cols: number, rows: number]; result: string }
 

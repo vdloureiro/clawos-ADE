@@ -16,11 +16,14 @@ export function AgentTerminal({
   agentId,
   agentName,
   action,
+  mcpId,
   onClose,
 }: {
   agentId: AgentId
   agentName: string
-  action: 'install' | 'login'
+  /** `mcp-login`: login de um MCP pelo Claude Code (`mcpId`, ex.: Meta Ads). */
+  action: 'install' | 'login' | 'mcp-login'
+  mcpId?: string
   onClose: (succeeded: boolean) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,13 +57,16 @@ export function AgentTerminal({
     }
     window.addEventListener('resize', onResize)
 
-    void window.clawos
-      .invoke(
-        action === 'install' ? 'agents:install' : 'agents:login',
-        agentId,
-        term.cols,
-        term.rows,
-      )
+    void (
+      action === 'mcp-login'
+        ? window.clawos.invoke('agents:mcpLogin', mcpId ?? '', term.cols, term.rows)
+        : window.clawos.invoke(
+            action === 'install' ? 'agents:install' : 'agents:login',
+            agentId,
+            term.cols,
+            term.rows,
+          )
+    )
       .then((id) => {
         terminalId = id
       })
@@ -75,7 +81,7 @@ export function AgentTerminal({
       if (terminalId) void window.clawos.invoke('terminal:kill', terminalId)
       term.dispose()
     }
-  }, [agentId, action])
+  }, [agentId, action, mcpId])
 
   // Portal: dentro do assistente ou de um painel, `fixed` ficaria preso (e cortado).
   return createPortal(
@@ -83,7 +89,11 @@ export function AgentTerminal({
       <div className="flex h-[480px] w-full max-w-3xl flex-col overflow-hidden rounded-lg border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b px-4 py-2">
           <div className="text-sm font-medium">
-            {action === 'install' ? `Instalando o ${agentName}` : `Entrar no ${agentName}`}
+            {action === 'install'
+              ? `Instalando o ${agentName}`
+              : action === 'mcp-login'
+                ? `Conectar ${agentName} pelo Claude`
+                : `Entrar no ${agentName}`}
             <span className="ml-2 text-xs font-normal text-muted-foreground">
               {action === 'install'
                 ? 'instalador oficial — pode levar um minuto'

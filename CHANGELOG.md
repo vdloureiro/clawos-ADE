@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- **Meta Ads** no catálogo de MCPs (servidor oficial da Meta): campanhas, conjuntos, anúncios, públicos, catálogos e métricas do Facebook e Instagram Ads. A Meta só libera o login para clientes aprovados, como o Claude: o botão "fazer login" abre o login oficial do Claude Code e as conversas com o Claude passam a usar esse acesso (o Clawos não vê o token). Com um token de usuário da Meta, funciona também no Codex.
+- **ClickUp** no catálogo de MCPs (servidor oficial): tarefas, listas, documentos, comentários e controle de tempo, com login na sua conta pelo navegador.
+
 ## 0.5.0
 
 - **Skills prontas**: na aba Skills (configurações do projeto e assistente de novo projeto), 30 skills de fontes abertas e conhecidas para adicionar com um clique: programação (TDD, depuração sistemática, planos, React/Next.js), design (front-end, revisão de interface, temas), marketing (copywriting, SEO, CRO, anúncios, e-mail, redes sociais, precificação) e escrita. Fontes: Anthropic, Superpowers, Vercel e Marketing Skills, cada uma presa a uma versão; cada arquivo baixado é conferido antes de instalar em `.clawos/skills/`.

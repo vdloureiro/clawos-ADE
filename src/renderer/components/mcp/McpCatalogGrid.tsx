@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import {
   buildCatalogEntry,
+  catalogEntry,
   MCP_CATALOG,
   type CatalogEntry,
   type CatalogSelection,
@@ -20,17 +21,22 @@ import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { McpIcon } from './McpIcon'
+import { AgentIcon } from '@/components/agents/AgentIcon'
+import { AgentTerminal } from '@/components/agents/AgentTerminal'
 
 /** Situação de um MCP adicionado: testando, conectado ou com erro. */
 export type McpStatus =
   | { state: 'testing'; since?: number }
   | { state: 'ok'; tools: number }
   | { state: 'error'; error: string }
+  /** Login feito pelo Claude Code na conversa; o Clawos não testa. */
+  | { state: 'claude'; mcpId: string }
   | { state: 'idle' }
 
 const AUTH_LABEL: Record<CatalogEntry['auth'], { label: string; icon: typeof KeyRound }> = {
   token: { label: 'token', icon: KeyRound },
   oauth: { label: 'login no navegador', icon: LogIn },
+  claude: { label: 'login pelo Claude', icon: LogIn },
   none: { label: 'local, sem conta', icon: Globe },
 }
 
@@ -39,7 +45,12 @@ const AUTH_LABEL: Record<CatalogEntry['auth'], { label: string; icon: typeof Key
  * erro na chamada vira "Falhou", e sem resposta além do limite também.
  */
 export async function runMcpTest(
-  call: () => Promise<{ ok: boolean; tools: string[]; error: string | null }>,
+  call: () => Promise<{
+    ok: boolean
+    tools: string[]
+    error: string | null
+    claudeLogin?: string
+  }>,
   limitMs = 200_000,
 ): Promise<McpStatus> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -48,6 +59,7 @@ export async function runMcpTest(
   })
   try {
     const result = await Promise.race([call(), timeout])
+    if (result.claudeLogin) return { state: 'claude', mcpId: result.claudeLogin }
     return result.ok
       ? { state: 'ok', tools: result.tools.length }
       : { state: 'error', error: result.error ?? 'Falha ao conectar.' }
@@ -78,6 +90,46 @@ function Elapsed({ since }: { since: number }) {
   )
 }
 
+/**
+ * MCP cujo login só o Claude Code pode fazer (a Meta aprova clientes um a um). O Clawos não
+ * vê esse acesso: abre o login oficial do Claude num terminal e as conversas o reutilizam.
+ */
+function ClaudeLogin({ mcpId }: { mcpId: string }) {
+  const [open, setOpen] = useState(false)
+  const [done, setDone] = useState(false)
+  const name = catalogEntry(mcpId)?.name ?? mcpId
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+      <span
+        className="flex items-center gap-1"
+        title="A Meta só libera o login para clientes aprovados, como o Claude. As conversas com o Claude usam esse login; o Codex precisa de um token."
+      >
+        <AgentIcon agentId="claude" className="size-3.5" />
+        {done ? 'Login feito pelo Claude' : 'Login pelo Claude'}
+      </span>
+      <button
+        type="button"
+        className="underline-offset-2 hover:text-foreground hover:underline"
+        onClick={() => setOpen(true)}
+      >
+        {done ? 'refazer login' : 'fazer login'}
+      </button>
+      {open && (
+        <AgentTerminal
+          agentId="claude"
+          agentName={name}
+          action="mcp-login"
+          mcpId={mcpId}
+          onClose={(ok) => {
+            setOpen(false)
+            if (ok) setDone(true)
+          }}
+        />
+      )}
+    </span>
+  )
+}
+
 /** Selo de status: ✓ Conectado, Conectando…, erro. */
 export function McpStatusBadge({ status, onRetry }: { status: McpStatus; onRetry?: () => void }) {
   if (status.state === 'testing')
@@ -96,6 +148,7 @@ export function McpStatusBadge({ status, onRetry }: { status: McpStatus; onRetry
         <CheckCircle2 className="size-4" /> Conectado
       </span>
     )
+  if (status.state === 'claude') return <ClaudeLogin mcpId={status.mcpId} />
   if (status.state === 'error')
     return (
       <span

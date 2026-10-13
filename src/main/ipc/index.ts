@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import type { McpServerConfig } from '@shared/project'
+import { catalogEntry, needsClaudeLogin } from '@shared/mcpCatalog'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, systemPreferences } from 'electron'
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
 import packageJson from '../../../package.json'
@@ -202,6 +203,32 @@ export function registerIpcHandlers(): void {
     return openTerminal(cliPath, agent.loginArgs, cols, rows)
   })
 
+  handle('agents:mcpLogin', async (mcpId, cols, rows) => {
+    const entry = catalogEntry(mcpId)
+    const server = entry?.auth === 'claude' ? entry.build({}) : null
+    if (!entry || !server || !('url' in server))
+      throw new Error(`MCP sem login pelo Claude: ${mcpId}`)
+    const cli = await resolveCli('claude')
+    // O Claude Code guarda o acesso pelo nome + endereço: o mesmo que as conversas usam.
+    if (process.platform === 'win32')
+      return openTerminal(
+        'cmd.exe',
+        [
+          '/c',
+          `"${cli}" mcp add --transport http --scope user ${entry.id} ${server.url} & "${cli}" mcp login ${entry.id}`,
+        ],
+        cols,
+        rows,
+      )
+    const script = [
+      'echo "Registrando $2 no Claude Code (se ainda não estiver)…"',
+      '"$1" mcp get "$2" >/dev/null 2>&1 || "$1" mcp add --transport http --scope user "$2" "$3" || exit 1',
+      'echo "Abrindo o login…"',
+      'exec "$1" mcp login "$2"',
+    ].join('\n')
+    return openTerminal('/bin/sh', ['-c', script, 'sh', cli, entry.id, server.url], cols, rows)
+  })
+
   // Projetos ----------------------------------------------------------------
   handle('projects:list', () => projects.list())
   handle('projects:add', async (path) => {
@@ -232,6 +259,8 @@ export function registerIpcHandlers(): void {
     secret: (name: string) => string | null,
     cwd: string,
   ) => {
+    if (needsClaudeLogin(server))
+      return { ok: false, tools: [], error: null, claudeLogin: 'meta-ads' }
     try {
       const [compiled] = compileMcpServers({
         agentId: 'claude',

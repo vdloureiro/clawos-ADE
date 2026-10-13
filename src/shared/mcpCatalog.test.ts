@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCatalogEntry, MCP_CATALOG } from './mcpCatalog'
+import { buildCatalogEntry, catalogEntry, MCP_CATALOG, needsClaudeLogin } from './mcpCatalog'
 import { mcpServerSchema, secretRefs } from './project'
 
 const entry = (id: string) => MCP_CATALOG.find((e) => e.id === id)!
@@ -59,6 +59,31 @@ describe('catálogo de MCPs', () => {
     })
     expect(server).toMatchObject({
       args: ['-y', '@supabase/mcp-server-supabase', '--project-ref=abc'],
+    })
+  })
+})
+
+describe('Meta Ads', () => {
+  const entry = catalogEntry('meta-ads')!
+
+  it('sem token: login pelo Claude, sem cabeçalho', () => {
+    const { server, secrets } = buildCatalogEntry(entry, {})
+    expect(server).toEqual({ type: 'http', url: 'https://mcp.facebook.com/ads' })
+    expect(secrets).toEqual({})
+    expect(needsClaudeLogin(server)).toBe(true)
+  })
+
+  it('com token: Bearer do cofre, testável e válido para qualquer agente', () => {
+    const { server, secrets } = buildCatalogEntry(entry, { token: 'EAAx' })
+    expect(server).toMatchObject({ headers: { Authorization: 'Bearer ${secret:meta_ads_token}' } })
+    expect(secrets).toEqual({ meta_ads_token: 'EAAx' })
+    expect(needsClaudeLogin(server)).toBe(false)
+  })
+
+  it('ClickUp entra pelo mcp-remote (login no navegador)', () => {
+    expect(buildCatalogEntry(catalogEntry('clickup')!, {}).server).toEqual({
+      command: 'npx',
+      args: ['-y', 'mcp-remote@latest', 'https://mcp.clickup.com/mcp'],
     })
   })
 })

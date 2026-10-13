@@ -22,9 +22,10 @@ export interface CatalogEntry {
   docsUrl: string
   /**
    * Como conecta: `token` (chave colada aqui), `oauth` (login no navegador na primeira
-   * conexão, via mcp-remote) ou `none` (local, sem conta).
+   * conexão, via mcp-remote), `claude` (o servidor só libera o login para clientes
+   * aprovados, como o Claude Code: ele mesmo faz o login e guarda o acesso) ou `none`.
    */
-  auth: 'token' | 'oauth' | 'none'
+  auth: 'token' | 'oauth' | 'claude' | 'none'
   fields: CatalogField[]
   /** Nome do segredo usado por cada campo `secret`. */
   secretName?: (field: string) => string
@@ -37,12 +38,64 @@ const secretRef = (name: string) => `\${secret:${name}}`
  * MCP remoto com login OAuth: o `mcp-remote` abre o navegador na primeira conexão e
  * guarda o acesso em ~/.mcp-auth (fora do projeto e do Clawos). Funciona em qualquer agente.
  */
+export const META_ADS_URL = 'https://mcp.facebook.com/ads'
+
+/**
+ * Servidor remoto sem token cujo login só o Claude Code consegue fazer (lista de clientes
+ * aprovados do provedor). O Clawos não testa nem toca nesse acesso: fica com o Claude.
+ */
+export function needsClaudeLogin(server: McpServerConfig): boolean {
+  return (
+    'url' in server &&
+    server.url === META_ADS_URL &&
+    !Object.keys(server.headers ?? {}).some((h) => h.toLowerCase() === 'authorization')
+  )
+}
+
 const viaOAuth = (url: string): McpServerConfig => ({
   command: 'npx',
   args: ['-y', 'mcp-remote@latest', url],
 })
 
 const EXTRA: CatalogEntry[] = [
+  {
+    id: 'meta-ads',
+    name: 'Meta Ads',
+    auth: 'claude',
+    description:
+      'Campanhas, conjuntos, anúncios, públicos, catálogos e métricas do Facebook e Instagram Ads (servidor oficial da Meta).',
+    docsUrl:
+      'https://developers.facebook.com/documentation/ads-commerce/ads-ai-connectors/ads-mcp-server/ads-mcp-server-get-started',
+    fields: [
+      {
+        key: 'token',
+        label: 'Token de acesso da Meta',
+        placeholder: 'EAA…',
+        secret: true,
+        optional: true,
+        help: 'Sem token, o login é feito pelo Claude na primeira conversa (a Meta só libera o login para clientes aprovados, como o Claude). Com um token de usuário (permissões ads_mcp_management, ads_read e ads_management), funciona também no Codex.',
+      },
+    ],
+    secretName: () => 'meta_ads_token',
+    build: (values) =>
+      values['token']?.trim()
+        ? {
+            type: 'http',
+            url: META_ADS_URL,
+            headers: { Authorization: `Bearer ${secretRef('meta_ads_token')}` },
+          }
+        : { type: 'http', url: META_ADS_URL },
+  },
+  {
+    id: 'clickup',
+    name: 'ClickUp',
+    auth: 'oauth',
+    description:
+      'Tarefas, listas, documentos, comentários e controle de tempo do ClickUp (servidor oficial). Login com a sua conta.',
+    docsUrl: 'https://help.clickup.com/hc/en-us/articles/33335772678423-What-is-ClickUp-MCP',
+    fields: [],
+    build: () => viaOAuth('https://mcp.clickup.com/mcp'),
+  },
   {
     id: 'vercel',
     name: 'Vercel',
@@ -278,6 +331,8 @@ const ORDER = [
   'github',
   'supabase',
   'vercel',
+  'meta-ads',
+  'clickup',
   'linear',
   'notion',
   'stripe',
