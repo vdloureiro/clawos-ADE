@@ -128,6 +128,14 @@ export async function setupTailscale(): Promise<RemoteStatus> {
     '--https=443',
     `http://127.0.0.1:${manager.port}`,
   ])
+  // Primeira vez: o dono da rede precisa autorizar o Serve (e o HTTPS) no Tailscale.
+  const consent = `${result.stderr}\n${result.stdout}`.match(
+    /https:\/\/login\.tailscale\.com\/\S+/,
+  )?.[0]
+  if (result.code !== 0 && consent)
+    throw new Error(
+      `TAILSCALE_CONSENT ${consent} O Tailscale precisa que você autorize o recurso Serve na sua rede (uma única vez).`,
+    )
   if (result.code !== 0)
     throw new Error(
       (result.stderr || result.stdout).trim() ||

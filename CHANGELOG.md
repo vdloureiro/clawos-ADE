@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Acesso remoto: quando o Tailscale pede para autorizar o recurso Serve na sua rede (primeira vez), o Clawos explica o passo e mostra os botões "Autorizar no Tailscale" e "Já autorizei — tentar de novo".
+
 ## 0.3.0
 
 - **Acesso remoto**: use o Clawos do seu computador pelo celular, tablet ou outro computador, pelo navegador. Ligue em Configurações → Acesso remoto. As conversas, os agentes e os arquivos continuam no seu computador.

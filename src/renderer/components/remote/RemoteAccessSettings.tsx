@@ -78,6 +78,7 @@ export function RemoteAccessSettings() {
     )
 
   const ts = status.tailscale
+  const consentUrl = error?.match(/TAILSCALE_CONSENT (\S+)/)?.[1] ?? null
   const minutesLeft = status.pairing
     ? Math.max(0, Math.ceil((status.pairing.expiresAt - now) / 60_000))
     : 0
@@ -117,7 +118,35 @@ export function RemoteAccessSettings() {
         </button>
       </div>
 
-      {error && (
+      {error && consentUrl && (
+        <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+          <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+            <TriangleAlert className="mt-px size-3.5 shrink-0" />
+            <span>
+              Falta um passo no Tailscale: autorizar o recurso <b>Serve</b> na sua rede (uma única
+              vez). Na página que abrir, confirme a ativação — e, se aparecer, ative também os
+              certificados HTTPS.
+            </span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => window.open(consentUrl)}>
+              <ExternalLink /> Autorizar no Tailscale
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy !== null}
+              onClick={() =>
+                void run('tailscale', () => window.clawos.invoke('remote:setupTailscale'))
+              }
+            >
+              {busy === 'tailscale' ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              Já autorizei — tentar de novo
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && !consentUrl && (
         <p className="flex items-start gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs text-red-600 dark:text-red-400">
           <TriangleAlert className="mt-px size-3.5 shrink-0" /> {error}
         </p>
