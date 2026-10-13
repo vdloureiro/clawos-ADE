@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- **Higgsfield** no catálogo de MCPs (projetos e "MCPs em todos os projetos"): gere imagens e vídeos com IA direto da conversa. Conecta com login na sua conta Higgsfield, pelo servidor oficial (mcp.higgsfield.ai).
+
 ## 0.4.0
 
 - **Catálogo de MCPs com logos**: GitHub, Supabase, Vercel, Linear, Notion, Stripe, Sentry, Cloudflare, Context7, Playwright, Filesystem e Memory, com os logos das marcas em preto e branco. Cada um mostra como conecta (token, login no navegador ou local).

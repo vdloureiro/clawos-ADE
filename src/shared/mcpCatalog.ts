@@ -97,6 +97,16 @@ const EXTRA: CatalogEntry[] = [
     }),
   },
   {
+    id: 'higgsfield',
+    name: 'Higgsfield',
+    auth: 'oauth',
+    description:
+      'Gere imagens e vídeos com IA (dezenas de modelos) direto da conversa. Login com a sua conta Higgsfield.',
+    docsUrl: 'https://higgsfield.ai/mcp',
+    fields: [],
+    build: () => viaOAuth('https://mcp.higgsfield.ai/mcp'),
+  },
+  {
     id: 'cloudflare',
     name: 'Cloudflare',
     auth: 'oauth',
@@ -273,6 +283,7 @@ const ORDER = [
   'stripe',
   'sentry',
   'cloudflare',
+  'higgsfield',
   'context7',
   'playwright',
   'filesystem',
