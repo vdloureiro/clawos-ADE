@@ -80,6 +80,13 @@ describe('Meta Ads', () => {
     expect(needsClaudeLogin(server)).toBe(false)
   })
 
+  it('Railway entra pelo mcp-remote (login no navegador)', () => {
+    expect(buildCatalogEntry(catalogEntry('railway')!, {}).server).toEqual({
+      command: 'npx',
+      args: ['-y', 'mcp-remote@latest', 'https://mcp.railway.com'],
+    })
+  })
+
   it('ClickUp entra pelo mcp-remote (login no navegador)', () => {
     expect(buildCatalogEntry(catalogEntry('clickup')!, {}).server).toEqual({
       command: 'npx',

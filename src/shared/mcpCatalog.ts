@@ -87,6 +87,16 @@ const EXTRA: CatalogEntry[] = [
         : { type: 'http', url: META_ADS_URL },
   },
   {
+    id: 'railway',
+    name: 'Railway',
+    auth: 'oauth',
+    description:
+      'Projetos, serviços, deploys, logs, variáveis e bancos da Railway (servidor oficial). Login com a sua conta.',
+    docsUrl: 'https://docs.railway.com/ai/remote-mcp-server',
+    fields: [],
+    build: () => viaOAuth('https://mcp.railway.com'),
+  },
+  {
     id: 'clickup',
     name: 'ClickUp',
     auth: 'oauth',
@@ -331,6 +341,7 @@ const ORDER = [
   'github',
   'supabase',
   'vercel',
+  'railway',
   'meta-ads',
   'clickup',
   'linear',

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- **Railway** no catálogo de MCPs (servidor oficial): projetos, serviços, deploys, logs, variáveis e bancos, com login na sua conta pelo navegador. Disponível nos projetos e em "MCPs em todos os projetos".
+
 ## 0.5.1
 
 - **Meta Ads** no catálogo de MCPs (servidor oficial da Meta): campanhas, conjuntos, anúncios, públicos, catálogos e métricas do Facebook e Instagram Ads. A Meta só libera o login para clientes aprovados, como o Claude: o botão "fazer login" abre o login oficial do Claude Code e as conversas com o Claude passam a usar esse acesso (o Clawos não vê o token). Com um token de usuário da Meta, funciona também no Codex.
