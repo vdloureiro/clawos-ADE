@@ -1,3 +1,5 @@
+import { SKILL_CATALOG, skillInstallPath } from '@shared/skillCatalog'
+import { SkillCatalogGrid } from '@/components/skills/SkillCatalogGrid'
 import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
@@ -23,7 +25,12 @@ import {
   type PermissionDefault,
 } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
-import { McpCatalogGrid, McpStatusBadge, type McpStatus } from '@/components/mcp/McpCatalogGrid'
+import {
+  McpCatalogGrid,
+  McpStatusBadge,
+  runMcpTest,
+  type McpStatus,
+} from '@/components/mcp/McpCatalogGrid'
 import { McpIcon } from '@/components/mcp/McpIcon'
 import { McpEditor } from '@/components/settings/ProjectSettings'
 import { Button } from '@/components/ui/button'
@@ -244,7 +251,12 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
             <McpStep mcps={mcps} setMcps={setMcps} cwd={inspection?.path ?? null} />
           )}
           {step === 'skills' && (
-            <SkillsStep skills={skills} setSkills={setSkills} onAdd={() => void addSkillFolder()} />
+            <SkillsStep
+              skills={skills}
+              setSkills={setSkills}
+              projectPath={inspection?.path ?? null}
+              onAdd={() => void addSkillFolder()}
+            />
           )}
           {step === 'revisao' && inspection && (
             <ReviewStep
@@ -513,16 +525,11 @@ function McpStep({
 
   // Testa de verdade (lista as ferramentas do MCP) para mostrar o ✓ de conectado.
   const test = async (mcp: Pick<ChosenMcp, 'name' | 'server' | 'secrets'>) => {
-    setStatus((s) => ({ ...s, [mcp.name]: { state: 'testing' } }))
-    const result = await window.clawos
-      .invoke('mcp:testConfig', mcp.server, mcp.secrets, cwd)
-      .catch((e: Error) => ({ ok: false, tools: [], error: e.message }))
-    setStatus((s) => ({
-      ...s,
-      [mcp.name]: result.ok
-        ? { state: 'ok', tools: result.tools.length }
-        : { state: 'error', error: result.error ?? 'Falha ao conectar.' },
-    }))
+    setStatus((s) => ({ ...s, [mcp.name]: { state: 'testing', since: Date.now() } }))
+    const next = await runMcpTest(() =>
+      window.clawos.invoke('mcp:testConfig', mcp.server, mcp.secrets, cwd),
+    )
+    setStatus((s) => ({ ...s, [mcp.name]: next }))
   }
 
   const others = mcps.filter((m) => m.origin !== 'catálogo')
@@ -626,22 +633,31 @@ function McpStep({
 function SkillsStep({
   skills,
   setSkills,
+  projectPath,
   onAdd,
 }: {
   skills: SkillChoice[]
   setSkills: React.Dispatch<React.SetStateAction<SkillChoice[]>>
+  projectPath: string | null
   onAdd: () => void
 }) {
+  const catalogPaths = new Set(SKILL_CATALOG.map((s) => skillInstallPath(s.id)))
+  const added = new Set(
+    SKILL_CATALOG.map((s) => s.id).filter((id) =>
+      skills.some((x) => x.checked && x.path === skillInstallPath(id)),
+    ),
+  )
+  const own = skills.filter((s) => !catalogPaths.has(s.path))
   return (
-    <div className="max-w-xl space-y-4">
+    <div className="max-w-2xl space-y-4">
       <p className="text-sm text-muted-foreground">
         Skills são pastas com um <code>SKILL.md</code>. As marcadas ficam disponíveis para os
         agentes deste projeto.
       </p>
-      {skills.length === 0 && (
+      {own.length === 0 && (
         <p className="text-sm text-muted-foreground">Nenhuma skill encontrada na pasta.</p>
       )}
-      {skills.map((skill) => (
+      {own.map((skill) => (
         <label key={skill.path} className="flex items-center gap-3 rounded-md border px-3 py-2.5">
           <input
             type="checkbox"
@@ -667,6 +683,27 @@ function SkillsStep({
       <p className="text-xs text-muted-foreground">
         Dica: skills em <code>.agents/skills/</code> são lidas por Claude, Codex e Gemini.
       </p>
+      {projectPath && (
+        <div className="space-y-2 border-t pt-4">
+          <div>
+            <div className="text-sm font-medium">Skills prontas</div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              De fontes abertas e conhecidas. Ao adicionar, a skill é baixada para{' '}
+              <code>.clawos/skills/</code> do projeto.
+            </p>
+          </div>
+          <SkillCatalogGrid
+            projectPath={projectPath}
+            added={added}
+            onInstalled={(_, path) =>
+              setSkills((list) => [...list.filter((x) => x.path !== path), { path, checked: true }])
+            }
+            onRemove={(id) =>
+              setSkills((list) => list.filter((x) => x.path !== skillInstallPath(id)))
+            }
+          />
+        </div>
+      )}
     </div>
   )
 }

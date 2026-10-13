@@ -145,6 +145,8 @@ export interface InvokeChannels {
     args: [server: McpServerConfig, secrets: Record<string, string>, cwd: string | null]
     result: McpTestResult
   }
+  /** Instala uma skill do catálogo na pasta do projeto; devolve o caminho para `skills`. */
+  'skills:install': { args: [projectPath: string, id: string]; result: string }
   /** Caminhos relativos dos arquivos do projeto (para o `@` do chat). */
   'projects:files': { args: [id: string]; result: string[] }
 

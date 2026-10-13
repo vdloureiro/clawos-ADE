@@ -41,11 +41,24 @@ export async function testMcpServer(
         >),
         ...Object.fromEntries(server.env.map((e) => [e.name, e.value])),
       },
-      stderr: 'ignore',
+      // As últimas linhas do servidor ajudam a explicar uma falha (sem tokens: só a saída dele).
+      stderr: 'pipe',
     })
   } else {
     return { ok: false, tools: [], error: 'Tipo de MCP não suportado.' }
   }
+
+  const stderrTail: string[] = []
+  if (transport instanceof StdioClientTransport) {
+    transport.stderr?.on('data', (chunk: Buffer) => {
+      for (const line of chunk.toString().split('\n')) {
+        if (!line.trim()) continue
+        stderrTail.push(line.trim().slice(0, 300))
+        if (stderrTail.length > 6) stderrTail.shift()
+      }
+    })
+  }
+  const detail = () => (stderrTail.length ? `\n${stderrTail.join('\n')}` : '')
 
   let timer: NodeJS.Timeout | undefined
   try {
@@ -59,7 +72,7 @@ export async function testMcpServer(
     const { tools } = await Promise.race([client.listTools(), timeout])
     return { ok: true, tools: tools.map((t) => t.name), error: null }
   } catch (error) {
-    return { ok: false, tools: [], error: (error as Error).message }
+    return { ok: false, tools: [], error: `${(error as Error).message}${detail()}` }
   } finally {
     clearTimeout(timer)
     await client.close().catch(() => undefined)

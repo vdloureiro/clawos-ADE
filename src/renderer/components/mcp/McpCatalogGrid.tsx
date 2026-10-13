@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CheckCircle2,
   Globe,
@@ -23,7 +23,7 @@ import { McpIcon } from './McpIcon'
 
 /** Situação de um MCP adicionado: testando, conectado ou com erro. */
 export type McpStatus =
-  | { state: 'testing' }
+  | { state: 'testing'; since?: number }
   | { state: 'ok'; tools: number }
   | { state: 'error'; error: string }
   | { state: 'idle' }
@@ -34,12 +34,57 @@ const AUTH_LABEL: Record<CatalogEntry['auth'], { label: string; icon: typeof Key
   none: { label: 'local, sem conta', icon: Globe },
 }
 
+/**
+ * Roda um teste de conexão e devolve o status. Nunca fica "Conectando…" para sempre:
+ * erro na chamada vira "Falhou", e sem resposta além do limite também.
+ */
+export async function runMcpTest(
+  call: () => Promise<{ ok: boolean; tools: string[]; error: string | null }>,
+  limitMs = 200_000,
+): Promise<McpStatus> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Sem resposta do teste de conexão.')), limitMs)
+  })
+  try {
+    const result = await Promise.race([call(), timeout])
+    return result.ok
+      ? { state: 'ok', tools: result.tools.length }
+      : { state: 'error', error: result.error ?? 'Falha ao conectar.' }
+  } catch (error) {
+    const message = (error as Error).message
+    return {
+      state: 'error',
+      error: message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''),
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** "Conectando… 12s": mostra que está andando (a 1ª conexão via npx baixa o servidor). */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const seconds = Math.max(0, Math.round((now - since) / 1000))
+  if (seconds < 3) return null
+  return (
+    <span className="text-muted-foreground/70">
+      {seconds}s{seconds >= 8 && ' · a primeira conexão pode demorar (baixando o servidor)'}
+    </span>
+  )
+}
+
 /** Selo de status: ✓ Conectado, Conectando…, erro. */
 export function McpStatusBadge({ status, onRetry }: { status: McpStatus; onRetry?: () => void }) {
   if (status.state === 'testing')
     return (
       <span className="flex items-center gap-1 text-xs text-muted-foreground">
         <Loader2 className="size-3.5 animate-spin" /> Conectando…
+        {status.since && <Elapsed since={status.since} />}
       </span>
     )
   if (status.state === 'ok')

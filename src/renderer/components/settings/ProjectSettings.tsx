@@ -1,17 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FolderPlus,
-  KeyRound,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  XCircle,
-} from 'lucide-react'
+import { AlertTriangle, FolderPlus, KeyRound, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { McpTestResult, ProjectConfigResult } from '@shared/ipc'
 import type { CatalogSelection } from '@shared/mcpCatalog'
+import { SKILL_CATALOG, skillInstallPath } from '@shared/skillCatalog'
 import { isRemoteMcp, secretRefs, type McpServerConfig, type ProjectConfig } from '@shared/project'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
 import type { AgentId, Project, PermissionDefault } from '@shared/types'
@@ -21,8 +12,14 @@ import { Input, Label, Textarea } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { emptyMcpForm, fromForm, toForm, type McpForm } from '@/lib/mcpForm'
 import { pickFolder } from '@/lib/platform'
-import { McpCatalogGrid, type McpStatus } from '@/components/mcp/McpCatalogGrid'
+import {
+  McpCatalogGrid,
+  McpStatusBadge,
+  runMcpTest,
+  type McpStatus,
+} from '@/components/mcp/McpCatalogGrid'
 import { McpIcon } from '@/components/mcp/McpIcon'
+import { SkillCatalogGrid } from '@/components/skills/SkillCatalogGrid'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -144,7 +141,7 @@ export function ProjectSettings({
               save={save}
             />
           ) : tab === 'skills' ? (
-            <SkillsTab project={project} draft={draft} setDraft={setDraft} />
+            <SkillsTab project={project} draft={draft} setDraft={setDraft} save={save} />
           ) : (
             <SecretsTab projectId={projectId} draft={draft} secrets={secrets} onChange={reload} />
           )}
@@ -289,7 +286,9 @@ function McpTab({
 }) {
   const [editing, setEditing] = useState<{ original: string | null; form: McpForm } | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
-  const [tests, setTests] = useState<Record<string, McpTestResult | 'loading'>>({})
+  const [tests, setTests] = useState<Record<string, McpStatus>>({})
+  /** Resultado completo (lista de ferramentas) para a linha do MCP. */
+  const [results, setResults] = useState<Record<string, McpTestResult>>({})
   const servers = Object.entries(draft.mcpServers ?? {})
 
   const commit = () => {
@@ -319,9 +318,13 @@ function McpTab({
   const test = async (name: string) => {
     // O teste usa o project.yaml salvo; salva antes se houver alterações.
     if (dirty && !(await save())) return
-    setTests((t) => ({ ...t, [name]: 'loading' }))
-    const result = await window.clawos.invoke('projects:testMcp', projectId, name)
-    setTests((t) => ({ ...t, [name]: result }))
+    setTests((t) => ({ ...t, [name]: { state: 'testing', since: Date.now() } }))
+    const next = await runMcpTest(async () => {
+      const result = await window.clawos.invoke('projects:testMcp', projectId, name)
+      setResults((r) => ({ ...r, [name]: result }))
+      return result
+    })
+    setTests((t) => ({ ...t, [name]: next }))
   }
 
   // MCPs de todos os projetos (Configurações do Clawos) e se valem aqui.
@@ -340,12 +343,7 @@ function McpTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const toStatus = (name: string): McpStatus => {
-    const t = tests[name]
-    if (!t) return { state: 'idle' }
-    if (t === 'loading') return { state: 'testing' }
-    return t.ok ? { state: 'ok', tools: t.tools.length } : { state: 'error', error: t.error ?? '' }
-  }
+  const toStatus = (name: string): McpStatus => tests[name] ?? { state: 'idle' }
 
   /** Adiciona do catálogo: grava no project.yaml, guarda os tokens e testa. */
   const addFromCatalog = async (selection: CatalogSelection) => {
@@ -396,7 +394,8 @@ function McpTab({
           key={name}
           name={name}
           server={server}
-          test={tests[name]}
+          status={tests[name]}
+          result={results[name]}
           onTest={() => void test(name)}
           onEdit={() => setEditing({ original: name, form: toForm(name, server) })}
           onRemove={() => removeServer(name)}
@@ -440,14 +439,16 @@ function McpTab({
 function McpRow({
   name,
   server,
-  test,
+  status,
+  result,
   onTest,
   onEdit,
   onRemove,
 }: {
   name: string
   server: McpServerConfig
-  test: McpTestResult | 'loading' | undefined
+  status: McpStatus | undefined
+  result: McpTestResult | undefined
   onTest: () => void
   onEdit: () => void
   onRemove: () => void
@@ -455,8 +456,14 @@ function McpRow({
   const summary = isRemoteMcp(server)
     ? `${server.type} ${server.url}`
     : [server.command, ...(server.args ?? [])].join(' ')
+  const testing = status?.state === 'testing'
   return (
-    <div className="rounded-md border p-3">
+    <div
+      className={cn(
+        'rounded-md border p-3',
+        status?.state === 'ok' && 'border-emerald-500/40 bg-emerald-500/[0.04]',
+      )}
+    >
       <div className="flex items-center gap-2">
         <McpIcon id={name} className="size-7" />
         <span className="font-medium">{name}</span>
@@ -466,14 +473,8 @@ function McpRow({
         >
           {summary}
         </span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7"
-          onClick={onTest}
-          disabled={test === 'loading'}
-        >
-          {test === 'loading' ? <Loader2 className="animate-spin" /> : null} Testar
+        <Button variant="outline" size="sm" className="h-7" onClick={onTest} disabled={testing}>
+          Testar
         </Button>
         <Button variant="ghost" size="icon" className="size-7" onClick={onEdit} title="Editar">
           <Pencil className="size-3.5" />
@@ -482,23 +483,19 @@ function McpRow({
           <Trash2 className="size-3.5" />
         </Button>
       </div>
-      {test && test !== 'loading' && (
-        <div
-          className={cn(
-            'mt-2 flex gap-2 text-xs',
-            test.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+      {status && status.state !== 'idle' && (
+        <div className="mt-2 space-y-1 pl-9">
+          <McpStatusBadge status={status} />
+          {status.state === 'ok' && result && (
+            <p className="text-[11px] text-muted-foreground select-text">
+              {result.tools.length} ferramenta(s): {result.tools.join(', ') || '(nenhuma)'}
+            </p>
           )}
-        >
-          {test.ok ? (
-            <CheckCircle2 className="size-4 shrink-0" />
-          ) : (
-            <XCircle className="size-4 shrink-0" />
+          {status.state === 'error' && (
+            <pre className="max-h-32 overflow-auto rounded bg-red-500/5 p-2 text-[11px] whitespace-pre-wrap text-red-600 select-text dark:text-red-400">
+              {status.error}
+            </pre>
           )}
-          <span className="select-text">
-            {test.ok
-              ? `Conectado — ${test.tools.length} ferramenta(s): ${test.tools.join(', ') || '(nenhuma)'}`
-              : test.error}
-          </span>
         </div>
       )}
     </div>
@@ -610,48 +607,84 @@ export function McpEditor({
 
 // ---------------------------------------------------------------------------
 
-function SkillsTab({ project, draft, setDraft }: DraftProps & { project: Project }) {
+function SkillsTab({
+  project,
+  draft,
+  setDraft,
+  save,
+}: DraftProps & { project: Project; save: (config: ProjectConfig) => Promise<boolean> }) {
   const skills = draft.skills ?? []
+  const fromCatalog = new Set(
+    SKILL_CATALOG.map((s) => s.id).filter((id) => skills.includes(skillInstallPath(id))),
+  )
+  const custom = skills.filter((s) => !SKILL_CATALOG.some((c) => skillInstallPath(c.id) === s))
+
+  /** Atualiza a lista a partir do rascunho mais recente (downloads terminam fora de ordem). */
+  const setSkills = (update: (list: string[]) => string[], persist = false) =>
+    setDraft((c) => {
+      const next = update(c.skills ?? [])
+      const config = { ...c, skills: next.length ? next : undefined }
+      // Idempotente: salvar a mesma configuração duas vezes não muda nada.
+      if (persist) queueMicrotask(() => void save(config))
+      return config
+    })
 
   const addSkill = async () => {
     const folder = await pickFolder('Pasta da skill (com SKILL.md)')
     if (!folder) return
     const base = project.path.endsWith('/') ? project.path : `${project.path}/`
     const entry = folder.startsWith(base) ? `./${folder.slice(base.length)}` : folder
-    setDraft((c) => ({ ...c, skills: [...(c.skills ?? []).filter((s) => s !== entry), entry] }))
+    setSkills((list) => [...list.filter((s) => s !== entry), entry])
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
         Pastas com <code>SKILL.md</code>. O Clawos as expõe ao agente a partir de um diretório
         gerado fora do repositório.
       </p>
-      {skills.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhuma skill configurada.</p>
-      )}
-      {skills.map((skill) => (
-        <div key={skill} className="flex items-center gap-2 rounded-md border px-3 py-2">
-          <span className="min-w-0 flex-1 truncate font-mono text-xs">{skill}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            title="Remover"
-            onClick={() =>
-              setDraft((c) => {
-                const next = (c.skills ?? []).filter((s) => s !== skill)
-                return { ...c, skills: next.length ? next : undefined }
-              })
-            }
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+      <div className="space-y-2">
+        <div className="text-xs font-medium">Suas skills</div>
+        {custom.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhuma pasta de skill própria.</p>
+        )}
+        {custom.map((skill) => (
+          <div key={skill} className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs">{skill}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              title="Remover"
+              onClick={() => setSkills((list) => list.filter((s) => s !== skill))}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => void addSkill()}>
+          <FolderPlus /> Adicionar pasta
+        </Button>
+      </div>
+      <div className="space-y-2 border-t pt-4">
+        <div>
+          <div className="text-xs font-medium">Skills prontas</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            De fontes abertas e conhecidas. Ao adicionar, a skill é baixada para{' '}
+            <code>.clawos/skills/</code> e já fica disponível para os agentes deste projeto.
+          </p>
         </div>
-      ))}
-      <Button variant="outline" size="sm" onClick={() => void addSkill()}>
-        <FolderPlus /> Adicionar pasta
-      </Button>
+        <SkillCatalogGrid
+          projectPath={project.path}
+          added={fromCatalog}
+          onInstalled={(_, path) =>
+            setSkills((list) => [...list.filter((s) => s !== path), path], true)
+          }
+          onRemove={(id) =>
+            setSkills((list) => list.filter((s) => s !== skillInstallPath(id)), true)
+          }
+        />
+      </div>
     </div>
   )
 }

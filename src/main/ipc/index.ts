@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
@@ -30,6 +30,7 @@ import {
   stopTailscale,
 } from '../remote/remote'
 import { listDirs } from '../projects/fileViewer'
+import { installSkill } from '../skills/installSkill'
 import { getServices, sendToAll } from '../services'
 import { taskPrompt } from '../tasks/TaskRepo'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
@@ -102,6 +103,31 @@ async function clipboardFilePaths(): Promise<string[]> {
 
 const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 
+/** Tempo máximo do teste de conexão de um MCP (a interface usa os mesmos valores). */
+const MCP_TEST_TIMEOUT = { default: 90_000, oauth: 180_000 }
+
+/**
+ * Registro dos testes de MCP (para diagnóstico): nome, comando/endereço, tempo e resultado.
+ * Nunca grava tokens — só o que está no project.yaml, onde eles aparecem como ${secret:…}.
+ */
+function logMcpTest(
+  name: string,
+  server: McpServerConfig,
+  result: { ok: boolean; tools: string[]; error: string | null },
+  ms: number,
+): void {
+  try {
+    const dir = join(app.getPath('userData'), 'logs')
+    mkdirSync(dir, { recursive: true })
+    const target =
+      'command' in server ? [server.command, ...(server.args ?? [])].join(' ') : server.url
+    const line = `${new Date().toISOString()} ${name} ${result.ok ? 'OK' : 'FALHOU'} ${(ms / 1000).toFixed(1)}s ${target} ${result.ok ? `${result.tools.length} ferramentas` : JSON.stringify(result.error)}\n`
+    appendFileSync(join(dir, 'mcp-tests.log'), line)
+  } catch {
+    // diagnóstico não pode quebrar o teste
+  }
+}
+
 /** Grava conteúdo colado (ex.: print de tela) fora dos projetos, para anexar à mensagem. */
 function saveAttachment(name: string, data: Uint8Array): string {
   if (data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error('Arquivo maior que 50 MB.')
@@ -153,6 +179,7 @@ export function registerIpcHandlers(): void {
   handle('files:write', (path, text, expectedMtime) => writeFromViewer(path, text, expectedMtime))
   handle('files:watch', (path) => watchers.watch(path))
   handle('fs:listDirs', (path) => listDirs(path))
+  handle('skills:install', (projectPath, id) => installSkill(projectPath, id))
 
   // Acesso remoto ----------------------------------------------------------------
   handle('remote:status', () => remoteStatus())
@@ -215,12 +242,23 @@ export function registerIpcHandlers(): void {
         generatedDir: '',
         globalMcp: [],
       })
-      // Login no navegador (mcp-remote): dá tempo para a pessoa entrar na conta.
+      // Login no navegador (mcp-remote): dá tempo para a pessoa entrar na conta. Servidores
+      // via npx baixam o pacote na primeira vez, o que pode levar mais de meio minuto.
       const oauth =
         'command' in server && (server.args ?? []).some((a) => a.startsWith('mcp-remote'))
-      return await testMcpServer(compiled!, cwd, await getShellEnv(), oauth ? 180_000 : 45_000)
+      const started = Date.now()
+      const result = await testMcpServer(
+        compiled!,
+        cwd,
+        await getShellEnv(),
+        oauth ? MCP_TEST_TIMEOUT.oauth : MCP_TEST_TIMEOUT.default,
+      )
+      logMcpTest(name, server, result, Date.now() - started)
+      return result
     } catch (e) {
-      return { ok: false, tools: [], error: (e as Error).message }
+      const result = { ok: false, tools: [], error: (e as Error).message }
+      logMcpTest(name, server, result, 0)
+      return result
     }
   }
 

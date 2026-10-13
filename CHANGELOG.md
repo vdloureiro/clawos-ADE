@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- **Skills prontas**: na aba Skills (configurações do projeto e assistente de novo projeto), 30 skills de fontes abertas e conhecidas para adicionar com um clique: programação (TDD, depuração sistemática, planos, React/Next.js), design (front-end, revisão de interface, temas), marketing (copywriting, SEO, CRO, anúncios, e-mail, redes sociais, precificação) e escrita. Fontes: Anthropic, Superpowers, Vercel e Marketing Skills, cada uma presa a uma versão; cada arquivo baixado é conferido antes de instalar em `.clawos/skills/`.
+- **MCPs que ficavam "Conectando…" para sempre**: o teste de conexão agora sempre termina (conectado ou com o erro), mostra há quanto tempo está tentando e inclui a mensagem do servidor no erro. A espera para MCPs com token subiu para 90 s (a primeira conexão baixa o servidor), e cada teste fica registrado em `logs/mcp-tests.log`, sem tokens.
+
 ## 0.4.1
 
 - **Higgsfield** no catálogo de MCPs (projetos e "MCPs em todos os projetos"): gere imagens e vídeos com IA direto da conversa. Conecta com login na sua conta Higgsfield, pelo servidor oficial (mcp.higgsfield.ai).

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { McpCatalogGrid, type McpStatus } from './McpCatalogGrid'
+import { McpCatalogGrid, runMcpTest, type McpStatus } from './McpCatalogGrid'
 
 /**
  * MCPs ativos em todos os projetos (ex.: GitHub): configurados uma vez aqui e
@@ -20,16 +20,9 @@ export function SharedMcpSettings() {
   )
 
   const test = useCallback(async (name: string) => {
-    setStatus((s) => ({ ...s, [name]: { state: 'testing' } }))
-    const result = await window.clawos
-      .invoke('mcp:sharedTest', name)
-      .catch((e: Error) => ({ ok: false, tools: [], error: e.message }))
-    setStatus((s) => ({
-      ...s,
-      [name]: result.ok
-        ? { state: 'ok', tools: result.tools.length }
-        : { state: 'error', error: result.error ?? 'Falha ao conectar.' },
-    }))
+    setStatus((s) => ({ ...s, [name]: { state: 'testing', since: Date.now() } }))
+    const next = await runMcpTest(() => window.clawos.invoke('mcp:sharedTest', name))
+    setStatus((s) => ({ ...s, [name]: next }))
   }, [])
 
   // Ao abrir, confere a conexão dos que já estão configurados.
