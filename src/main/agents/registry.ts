@@ -21,6 +21,11 @@ export interface AgentDefinition {
   /** Instalador oficial (rodado num terminal dentro do app ou copiado pelo usuário). */
   install: { posix: string; windows: string }
   installUrl: string
+  /**
+   * Modo nativo do agente (ACP `configOptions`, categoria `mode`) para a permissão
+   * padrão do projeto: `auto` não pede nada; `ask` pede autorização antes de agir.
+   */
+  permissionModes?: { auto: string; ask: string }
   /** Como resolver quando o agente exige autenticação (erro ACP `auth_required`). */
   authHelp: string
   acp:
@@ -59,6 +64,7 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
       windows: 'irm https://claude.ai/install.ps1 | iex',
     },
     installUrl: 'https://code.claude.com/docs/en/setup',
+    permissionModes: { auto: 'bypassPermissions', ask: 'default' },
     authHelp: 'Entre no Claude pelo botão Entrar em Configurações (roda `claude auth login`).',
     acp: {
       kind: 'adapter',
@@ -79,6 +85,7 @@ export const AGENTS: Record<AgentId, AgentDefinition> = {
       windows: 'irm https://chatgpt.com/codex/install.ps1 | iex',
     },
     installUrl: 'https://developers.openai.com/codex/cli',
+    permissionModes: { auto: 'agent-full-access', ask: 'read-only' },
     authHelp: 'Entre no Codex pelo botão Entrar em Configurações (roda `codex login`).',
     acp: {
       kind: 'adapter',

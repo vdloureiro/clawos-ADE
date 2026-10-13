@@ -11,13 +11,20 @@ import {
   Loader2,
   Plug,
   Plus,
+  ShieldCheck,
   Sparkles,
   Trash2,
+  Zap,
 } from 'lucide-react'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
 import { buildCatalogEntry, MCP_CATALOG, type CatalogEntry } from '@shared/mcpCatalog'
 import { isRemoteMcp, type McpServerConfig, type ProjectConfig } from '@shared/project'
-import { PROJECT_COLORS, type AgentId, type FolderInspection } from '@shared/types'
+import {
+  PROJECT_COLORS,
+  type AgentId,
+  type FolderInspection,
+  type PermissionDefault,
+} from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
 import { McpEditor } from '@/components/settings/ProjectSettings'
 import { Button } from '@/components/ui/button'
@@ -30,11 +37,12 @@ import { useAgentsStore } from '@/stores/agents'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 
-type Step = 'projeto' | 'agentes' | 'mcps' | 'skills' | 'revisao'
+type Step = 'projeto' | 'agentes' | 'permissoes' | 'mcps' | 'skills' | 'revisao'
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'projeto', label: 'Projeto' },
   { id: 'agentes', label: 'Agentes' },
+  { id: 'permissoes', label: 'Permissões' },
   { id: 'mcps', label: 'MCPs' },
   { id: 'skills', label: 'Skills' },
   { id: 'revisao', label: 'Revisão' },
@@ -74,6 +82,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [mcps, setMcps] = useState<ChosenMcp[]>([])
   const [skills, setSkills] = useState<SkillChoice[]>([])
   const [openChat, setOpenChat] = useState(true)
+  const [permission, setPermission] = useState<PermissionDefault>('ask')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -90,6 +99,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       setInspection(info)
       setName(info.alreadyAdded?.name ?? info.suggestedName)
       if (info.alreadyAdded) setColor(info.alreadyAdded.color)
+      if (info.alreadyAdded?.permissionDefault) setPermission(info.alreadyAdded.permissionDefault)
       setDefaultAgent(config.defaultAgent ?? 'claude')
       setEnabled({
         claude: config.agents?.['claude']?.enabled !== false,
@@ -159,6 +169,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         config,
         secrets: Object.assign({}, ...mcps.map((m) => m.secrets)),
         writeConfig,
+        permissionDefault: permission,
       })
       await created(project)
       await useSessionsStore.getState().loadProject(project.id)
@@ -228,6 +239,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
               onInstructions={setCustomInstructions}
             />
           )}
+          {step === 'permissoes' && <PermissionStep value={permission} onChange={setPermission} />}
           {step === 'mcps' && <McpStep mcps={mcps} setMcps={setMcps} />}
           {step === 'skills' && (
             <SkillsStep skills={skills} setSkills={setSkills} onAdd={() => void addSkillFolder()} />
@@ -240,6 +252,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
               defaultAgent={defaultAgent}
               enabled={enabled}
               customInstructions={customInstructions}
+              permission={permission}
               mcps={mcps}
               skills={skills.filter((s) => s.checked).map((s) => s.path)}
               openChat={openChat}
@@ -726,6 +739,94 @@ function SkillsStep({
   )
 }
 
+const PERMISSION_OPTIONS: {
+  value: PermissionDefault
+  title: string
+  description: string
+  hint: string
+}[] = [
+  {
+    value: 'auto',
+    title: 'Automático',
+    description:
+      'O agente edita arquivos e roda comandos sem parar para pedir autorização. É o jeito mais rápido de trabalhar.',
+    hint: 'Ideal quando o projeto usa Git ou tem backup — dá para desfazer qualquer mudança.',
+  },
+  {
+    value: 'ask',
+    title: 'Pedir autorização',
+    description:
+      'Antes de editar arquivos ou rodar comandos, o agente pergunta e espera você aprovar no chat.',
+    hint: 'Mais controle, porém mais lento: o trabalho para a cada ação até você responder.',
+  },
+]
+
+function PermissionStep({
+  value,
+  onChange,
+}: {
+  value: PermissionDefault
+  onChange: (value: PermissionDefault) => void
+}) {
+  return (
+    <div className="max-w-xl space-y-3">
+      <div>
+        <h3 className="text-sm font-medium">Como os agentes devem trabalhar neste projeto?</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Vale para todas as conversas novas do projeto, com qualquer agente.
+        </p>
+      </div>
+      {PERMISSION_OPTIONS.map((option) => {
+        const selected = option.value === value
+        const Icon = option.value === 'auto' ? Zap : ShieldCheck
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'flex w-full items-start gap-3 rounded-lg border p-4 text-left transition-colors',
+              selected ? 'border-foreground/40 bg-accent' : 'hover:bg-accent/50',
+            )}
+          >
+            <span
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-lg',
+                option.value === 'auto'
+                  ? 'bg-amber-500/15 text-amber-500'
+                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+              )}
+            >
+              <Icon className="size-4.5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{option.title}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {option.description}
+              </span>
+              <span className="mt-1.5 block text-[11px] text-muted-foreground/80">
+                {option.hint}
+              </span>
+            </span>
+            <span
+              className={cn(
+                'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border',
+                selected && 'border-foreground bg-foreground text-background',
+              )}
+            >
+              {selected && <Check className="size-3" />}
+            </span>
+          </button>
+        )
+      })}
+      <p className="text-[11px] text-muted-foreground">
+        Dá para mudar quando quiser: em cada conversa (barra do chat) ou nas configurações do
+        projeto.
+      </p>
+    </div>
+  )
+}
+
 function ReviewStep({
   inspection,
   name,
@@ -733,6 +834,7 @@ function ReviewStep({
   defaultAgent,
   enabled,
   customInstructions,
+  permission,
   mcps,
   skills,
   openChat,
@@ -744,6 +846,7 @@ function ReviewStep({
   defaultAgent: AgentId
   enabled: Record<AgentId, boolean>
   customInstructions: string
+  permission: PermissionDefault
   mcps: ChosenMcp[]
   skills: string[]
   openChat: boolean
@@ -772,6 +875,20 @@ function ReviewStep({
             {AGENT_IDS.filter((id) => enabled[id])
               .map((id) => AGENT_META[id].name + (id === defaultAgent ? ' (padrão)' : ''))
               .join(', ')}
+          </span>
+        </div>
+        <div className={row}>
+          <span className={key}>Permissões</span>
+          <span className="flex items-center gap-1.5">
+            {permission === 'auto' ? (
+              <>
+                <Zap className="size-3.5 text-amber-500" /> Automático — não pede autorização
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="size-3.5" /> Pedir autorização antes de agir
+              </>
+            )}
           </span>
         </div>
         <div className={row}>

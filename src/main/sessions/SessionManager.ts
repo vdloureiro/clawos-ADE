@@ -14,7 +14,7 @@ import type {
   WorktreeDiff,
 } from '@shared/types'
 import { AgentSession } from '../agents/AgentSession'
-import type { GlobalMcp } from '../agents/registry'
+import { getAgent, type GlobalMcp } from '../agents/registry'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
 import { materialize } from '../compiler/materialize'
 import type { ProjectManager } from '../projects/ProjectManager'
@@ -234,8 +234,16 @@ export class SessionManager {
     items: ChatState['items'],
     config: SessionConfigChoice | null = null,
   ): void {
-    // Conversa nova (ou anterior a esta opção) herda a última escolha feita com o agente.
-    const choice = { ...this.deps.repo.agentPreferences(summary.agentId), ...config }
+    // Conversa nova (ou anterior a esta opção) herda a última escolha feita com o agente;
+    // a permissão padrão do projeto, se houver, vale para o modo. O que foi escolhido
+    // dentro da própria conversa sempre prevalece.
+    const permission = this.deps.projects.get(summary.projectId).permissionDefault
+    const projectMode = permission ? getAgent(summary.agentId).permissionModes?.[permission] : null
+    const choice = {
+      ...this.deps.repo.agentPreferences(summary.agentId),
+      ...(projectMode && { mode: projectMode }),
+      ...config,
+    }
     const live: LiveSession = {
       agent: null,
       chat: { ...createChatState(summary), items },

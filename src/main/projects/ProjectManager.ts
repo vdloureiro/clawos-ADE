@@ -9,7 +9,10 @@ import {
   type AgentId,
   type FolderInspection,
   type NewProjectInput,
+  type PermissionDefault,
   type Project,
+  type ProjectFolder,
+  type SidebarArrangement,
 } from '@shared/types'
 
 interface ProjectRow {
@@ -21,6 +24,23 @@ interface ProjectRow {
   created_at: number
   last_opened_at: number | null
   sort_order: number
+  folder_id: string | null
+  permission_default: string | null
+}
+
+interface FolderRow {
+  id: string
+  name: string
+  sort_order: number
+  collapsed: number
+}
+
+function toFolder(row: FolderRow): ProjectFolder {
+  return { id: row.id, name: row.name, sortOrder: row.sort_order, collapsed: row.collapsed === 1 }
+}
+
+function toPermission(value: string | null): PermissionDefault | null {
+  return value === 'auto' || value === 'ask' ? value : null
 }
 
 function toProject(row: ProjectRow): Project {
@@ -33,6 +53,8 @@ function toProject(row: ProjectRow): Project {
     createdAt: row.created_at,
     lastOpenedAt: row.last_opened_at,
     sortOrder: row.sort_order,
+    folderId: row.folder_id,
+    permissionDefault: toPermission(row.permission_default),
   }
 }
 
@@ -76,6 +98,14 @@ export class ProjectManager {
 
     const { config } = this.readConfig(path)
     const count = (this.db.prepare('SELECT COUNT(*) AS n FROM projects').get() as { n: number }).n
+    // Projeto novo entra no fim do nível de cima (depois de pastas e projetos soltos).
+    const last = this.db
+      .prepare(
+        `SELECT MAX(o) AS o FROM (
+           SELECT sort_order AS o FROM projects WHERE folder_id IS NULL
+           UNION ALL SELECT sort_order FROM project_folders)`,
+      )
+      .get() as { o: number | null }
     const project: Project = {
       id: randomUUID(),
       name: config.name || basename(path),
@@ -84,7 +114,9 @@ export class ProjectManager {
       defaultAgent: config.defaultAgent ?? 'claude',
       createdAt: Date.now(),
       lastOpenedAt: null,
-      sortOrder: count,
+      sortOrder: (last.o ?? -1) + 1,
+      folderId: null,
+      permissionDefault: null,
     }
     this.db
       .prepare(
@@ -95,12 +127,118 @@ export class ProjectManager {
     return project
   }
 
-  update(id: string, patch: { name?: string; color?: string }): Project {
+  update(
+    id: string,
+    patch: { name?: string; color?: string; permissionDefault?: PermissionDefault | null },
+  ): Project {
     const project = this.get(id)
     const name = patch.name?.trim() || project.name
     const color = patch.color ?? project.color
-    this.db.prepare('UPDATE projects SET name = ?, color = ? WHERE id = ?').run(name, color, id)
-    return { ...project, name, color }
+    const permissionDefault =
+      patch.permissionDefault === undefined
+        ? project.permissionDefault
+        : toPermission(patch.permissionDefault)
+    this.db
+      .prepare('UPDATE projects SET name = ?, color = ?, permission_default = ? WHERE id = ?')
+      .run(name, color, permissionDefault, id)
+    return { ...project, name, color, permissionDefault }
+  }
+
+  // -------------------------------------------------------------------------
+  // Pastas da barra lateral
+
+  listFolders(): ProjectFolder[] {
+    const rows = this.db
+      .prepare('SELECT * FROM project_folders ORDER BY sort_order')
+      .all() as FolderRow[]
+    return rows.map(toFolder)
+  }
+
+  /** Cria a pasta no topo da lista (onde a pessoa vai procurar logo em seguida). */
+  createFolder(name: string): ProjectFolder {
+    const clean = name.trim() || 'Nova pasta'
+    const first = this.db
+      .prepare(
+        `SELECT MIN(o) AS o FROM (
+           SELECT sort_order AS o FROM projects WHERE folder_id IS NULL
+           UNION ALL SELECT sort_order FROM project_folders)`,
+      )
+      .get() as { o: number | null }
+    const folder: ProjectFolder = {
+      id: randomUUID(),
+      name: clean,
+      sortOrder: (first.o ?? 0) - 1,
+      collapsed: false,
+    }
+    this.db
+      .prepare(
+        'INSERT INTO project_folders (id, name, sort_order, collapsed, created_at) VALUES (?, ?, ?, 0, ?)',
+      )
+      .run(folder.id, folder.name, folder.sortOrder, Date.now())
+    return folder
+  }
+
+  updateFolder(id: string, patch: { name?: string; collapsed?: boolean }): ProjectFolder {
+    const row = this.db.prepare('SELECT * FROM project_folders WHERE id = ?').get(id) as
+      FolderRow | undefined
+    if (!row) throw new Error(`Pasta não encontrada: ${id}`)
+    const name = patch.name?.trim() || row.name
+    const collapsed = patch.collapsed ?? row.collapsed === 1
+    this.db
+      .prepare('UPDATE project_folders SET name = ?, collapsed = ? WHERE id = ?')
+      .run(name, collapsed ? 1 : 0, id)
+    return toFolder({ ...row, name, collapsed: collapsed ? 1 : 0 })
+  }
+
+  /** Apaga a pasta; os projetos dela voltam soltos, no lugar onde a pasta estava. */
+  deleteFolder(id: string): void {
+    const arrangement: SidebarArrangement = []
+    for (const item of this.currentArrangement()) {
+      if (item.type === 'folder' && item.id === id)
+        arrangement.push(...item.projectIds.map((pid) => ({ type: 'project' as const, id: pid })))
+      else arrangement.push(item)
+    }
+    this.db.transaction(() => {
+      this.arrange(arrangement)
+      this.db.prepare('DELETE FROM project_folders WHERE id = ?').run(id)
+    })()
+  }
+
+  /** Grava a ordem completa da barra lateral (após arrastar projetos ou pastas). */
+  arrange(items: SidebarArrangement): void {
+    const setProject = this.db.prepare(
+      'UPDATE projects SET folder_id = ?, sort_order = ? WHERE id = ?',
+    )
+    const setFolder = this.db.prepare('UPDATE project_folders SET sort_order = ? WHERE id = ?')
+    this.db.transaction(() => {
+      items.forEach((item, index) => {
+        if (item.type === 'project') {
+          setProject.run(null, index, item.id)
+          return
+        }
+        setFolder.run(index, item.id)
+        item.projectIds.forEach((pid, i) => setProject.run(item.id, i, pid))
+      })
+    })()
+  }
+
+  /** Ordem atual (pastas e projetos soltos intercalados pelo sort_order). */
+  currentArrangement(): SidebarArrangement {
+    const projects = this.list()
+    const top = [
+      ...this.listFolders().map((f) => ({
+        order: f.sortOrder,
+        item: {
+          type: 'folder' as const,
+          id: f.id,
+          projectIds: projects.filter((p) => p.folderId === f.id).map((p) => p.id),
+        },
+      })),
+      ...projects
+        .filter((p) => !p.folderId)
+        .map((p) => ({ order: p.sortOrder, item: { type: 'project' as const, id: p.id } })),
+    ]
+    return top.sort((a, b) => a.order - b.order).map((t) => t.item)
   }
 
   reorder(ids: string[]): void {
@@ -154,7 +292,11 @@ export class ProjectManager {
   ): Project {
     const config = projectConfigSchema.parse(input.config)
     const project = this.add(input.path)
-    const updated = this.update(project.id, { name: input.name, color: input.color })
+    const updated = this.update(project.id, {
+      name: input.name,
+      color: input.color,
+      permissionDefault: input.permissionDefault,
+    })
     if (input.writeConfig) this.writeConfig(project.id, config)
     for (const [name, value] of Object.entries(input.secrets)) saveSecret(project.id, name, value)
     this.db

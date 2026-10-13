@@ -91,4 +91,18 @@ export const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  /* 5 */ `
+  -- Pastas da barra lateral (ex.: uma por cliente). Pastas e projetos soltos dividem a
+  -- mesma ordem no nível de cima; dentro de uma pasta, sort_order é a ordem na pasta.
+  CREATE TABLE project_folders (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    collapsed  INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+  ALTER TABLE projects ADD COLUMN folder_id TEXT REFERENCES project_folders(id) ON DELETE SET NULL;
+  -- Modo de permissão das conversas novas: 'auto', 'ask' ou NULL (última escolha).
+  ALTER TABLE projects ADD COLUMN permission_default TEXT;
+  `,
 ]

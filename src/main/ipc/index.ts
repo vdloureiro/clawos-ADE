@@ -165,6 +165,11 @@ export function registerIpcHandlers(): void {
   )
   handle('projects:update', (id, patch) => projects.update(id, patch))
   handle('projects:reorder', (ids) => projects.reorder(ids))
+  handle('projects:arrange', (items) => projects.arrange(items))
+  handle('folders:list', () => projects.listFolders())
+  handle('folders:create', (name) => projects.createFolder(name))
+  handle('folders:update', (id, patch) => projects.updateFolder(id, patch))
+  handle('folders:delete', (id) => projects.deleteFolder(id))
   handle('projects:remove', (id) => {
     for (const session of sessions.list(id)) if (session.live) sessions.stop(session.id)
     projects.remove(id)

@@ -166,7 +166,27 @@ export interface Project {
   createdAt: number
   lastOpenedAt: number | null
   sortOrder: number
+  /** Pasta da barra lateral, ou null (solto no nível de cima). */
+  folderId: string | null
+  /** Permissão padrão das conversas novas; null = segue a última escolha com o agente. */
+  permissionDefault: PermissionDefault | null
 }
+
+/** `auto`: o agente faz tudo sem pedir. `ask`: pede autorização antes de agir. */
+export type PermissionDefault = 'auto' | 'ask'
+
+/** Pasta da barra lateral que agrupa projetos (ex.: um cliente). */
+export interface ProjectFolder {
+  id: string
+  name: string
+  collapsed: boolean
+  sortOrder: number
+}
+
+/** Ordem completa da barra lateral, gravada de uma vez após arrastar. */
+export type SidebarArrangement = (
+  { type: 'folder'; id: string; projectIds: string[] } | { type: 'project'; id: string }
+)[]
 
 export const PROJECT_COLORS = [
   '#f97316',
@@ -235,6 +255,7 @@ export interface NewProjectInput {
   secrets: Record<string, string>
   /** Gravar .clawos/project.yaml (só quando há algo a configurar). */
   writeConfig: boolean
+  permissionDefault: PermissionDefault | null
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import {
 import type { McpTestResult, ProjectConfigResult } from '@shared/ipc'
 import { isRemoteMcp, secretRefs, type McpServerConfig, type ProjectConfig } from '@shared/project'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
-import type { AgentId, Project } from '@shared/types'
+import type { AgentId, Project, PermissionDefault } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
@@ -192,6 +192,25 @@ function GeneralTab({ project, draft, setDraft }: DraftProps & { project: Projec
           placeholder={project.name}
           onChange={(e) => update((c) => ({ ...c, name: e.target.value || undefined }))}
         />
+      </div>
+      <div className="space-y-1">
+        <Label>Permissão padrão das conversas</Label>
+        <select
+          className="h-8 w-full rounded-md border bg-background px-2 text-sm"
+          value={project.permissionDefault ?? ''}
+          onChange={(e) =>
+            void useProjectsStore.getState().update(project.id, {
+              permissionDefault: (e.target.value || null) as PermissionDefault | null,
+            })
+          }
+        >
+          <option value="auto">Automático — não pede autorização</option>
+          <option value="ask">Pedir autorização antes de agir</option>
+          <option value="">Seguir a última escolha feita no chat</option>
+        </select>
+        <p className="text-[11px] text-muted-foreground">
+          Vale para conversas novas (salva na hora). Cada conversa pode trocar pela barra do chat.
+        </p>
       </div>
       <div className="space-y-1">
         <Label>Agente padrão</Label>

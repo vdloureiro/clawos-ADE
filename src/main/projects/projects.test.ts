@@ -33,6 +33,64 @@ describe('ProjectManager', () => {
     expect(projects.list()).toHaveLength(1)
   })
 
+  it('pastas: cria no topo, agrupa projetos, reordena e apaga devolvendo os projetos', () => {
+    const a = projects.add(tempDir())
+    const b = projects.add(tempDir())
+    const c = projects.add(tempDir())
+    const cliente = projects.createFolder('  Cliente X ')
+    expect(cliente.name).toBe('Cliente X')
+    expect(projects.currentArrangement()).toEqual([
+      { type: 'folder', id: cliente.id, projectIds: [] },
+      { type: 'project', id: a.id },
+      { type: 'project', id: b.id },
+      { type: 'project', id: c.id },
+    ])
+
+    // Arrastar b e c para dentro da pasta (c antes de b) e a pasta para o fim.
+    projects.arrange([
+      { type: 'project', id: a.id },
+      { type: 'folder', id: cliente.id, projectIds: [c.id, b.id] },
+    ])
+    expect(projects.get(b.id).folderId).toBe(cliente.id)
+    expect(projects.currentArrangement()).toEqual([
+      { type: 'project', id: a.id },
+      { type: 'folder', id: cliente.id, projectIds: [c.id, b.id] },
+    ])
+
+    // Projeto novo entra no fim, depois da pasta.
+    const d = projects.add(tempDir())
+    expect(projects.currentArrangement().at(-1)).toEqual({ type: 'project', id: d.id })
+
+    expect(projects.updateFolder(cliente.id, { collapsed: true, name: 'Cliente Y' })).toMatchObject(
+      {
+        name: 'Cliente Y',
+        collapsed: true,
+      },
+    )
+
+    // Apagar a pasta: os projetos voltam soltos, no lugar dela, e nada some.
+    projects.deleteFolder(cliente.id)
+    expect(projects.listFolders()).toEqual([])
+    expect(projects.currentArrangement()).toEqual([
+      { type: 'project', id: a.id },
+      { type: 'project', id: c.id },
+      { type: 'project', id: b.id },
+      { type: 'project', id: d.id },
+    ])
+    expect(projects.list().every((p) => p.folderId === null)).toBe(true)
+  })
+
+  it('permissão padrão por projeto', () => {
+    const a = projects.add(tempDir())
+    expect(a.permissionDefault).toBeNull()
+    expect(projects.update(a.id, { permissionDefault: 'auto' }).permissionDefault).toBe('auto')
+    expect(projects.get(a.id).permissionDefault).toBe('auto')
+    // Renomear não mexe na permissão.
+    projects.update(a.id, { name: 'Outro' })
+    expect(projects.get(a.id).permissionDefault).toBe('auto')
+    expect(projects.update(a.id, { permissionDefault: null }).permissionDefault).toBeNull()
+  })
+
   it('usa o nome do project.yaml quando existe', () => {
     const dir = tempDir()
     mkdirSync(join(dir, '.clawos'))
@@ -139,6 +197,7 @@ describe('assistente de novo projeto', () => {
         },
         secrets: { github_token: 'segredo' },
         writeConfig: true,
+        permissionDefault: 'auto',
       },
       (_id, name, value) => saved.push(`${name}=${value}`),
     )
@@ -160,6 +219,7 @@ describe('assistente de novo projeto', () => {
           config: { mcpServers: { 'nome inválido': { command: 'x' } } },
           secrets: {},
           writeConfig: true,
+          permissionDefault: null,
         },
         () => {},
       ),
@@ -171,7 +231,15 @@ describe('assistente de novo projeto', () => {
     const manager = new ProjectManager(openDatabase(':memory:'))
     const dir = tempDir()
     manager.create(
-      { path: dir, name: 'Y', color: '#fff', config: {}, secrets: {}, writeConfig: false },
+      {
+        path: dir,
+        name: 'Y',
+        color: '#fff',
+        config: {},
+        secrets: {},
+        writeConfig: false,
+        permissionDefault: null,
+      },
       () => {},
     )
     expect(existsSync(join(dir, '.clawos'))).toBe(false)

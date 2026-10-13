@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- **Pastas na barra lateral** para organizar projetos (ex.: uma pasta por cliente). Crie pelo ícone de pasta ao lado de "Projetos", arraste projetos para dentro, para fora ou para reordenar, e abra/feche cada pasta. Também dá para mover pelo menu do projeto ("Mover para pasta"). Renomeie com duplo clique; excluir uma pasta não apaga nenhum projeto.
+- **Permissão padrão por projeto**: o assistente de novo projeto ganhou a etapa "Permissões" — Automático (o agente não pede autorização) ou Pedir autorização. Vale para todas as conversas novas do projeto, com qualquer agente, e pode ser trocada nas configurações do projeto ou em cada conversa.
+
 ## 0.2.0
 
 - **Assistente de primeiro acesso**: no primeiro uso, o Clawos guia em três passos — instalar os agentes, entrar com sua conta e criar o primeiro projeto. Reabra quando quiser pela busca (⌘K → "Primeiros passos").

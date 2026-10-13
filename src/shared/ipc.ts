@@ -12,6 +12,9 @@ import type {
   MergeResult,
   FolderInspection,
   NewProjectInput,
+  PermissionDefault,
+  ProjectFolder,
+  SidebarArrangement,
   Project,
   SessionConfigOption,
   SessionEvent,
@@ -86,9 +89,22 @@ export interface InvokeChannels {
   'projects:inspect': { args: [path: string]; result: FolderInspection }
   'projects:create': { args: [input: NewProjectInput]; result: Project }
   'projects:update': {
-    args: [id: string, patch: { name?: string; color?: string }]
+    args: [
+      id: string,
+      patch: { name?: string; color?: string; permissionDefault?: PermissionDefault | null },
+    ]
     result: Project
   }
+  /** Ordem completa da barra lateral: pastas (com seus projetos) e projetos soltos. */
+  'projects:arrange': { args: [items: SidebarArrangement]; result: void }
+  'folders:list': { args: []; result: ProjectFolder[] }
+  'folders:create': { args: [name: string]; result: ProjectFolder }
+  'folders:update': {
+    args: [id: string, patch: { name?: string; collapsed?: boolean }]
+    result: ProjectFolder
+  }
+  /** Apaga a pasta (os projetos voltam soltos; nada é apagado do disco). */
+  'folders:delete': { args: [id: string]; result: void }
   'projects:reorder': { args: [ids: string[]]; result: void }
   'projects:remove': { args: [id: string]; result: void }
   'projects:getConfig': { args: [id: string]; result: ProjectConfigResult }
