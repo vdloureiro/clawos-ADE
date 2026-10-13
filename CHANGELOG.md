@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- Acesso remoto: a interface agora se ajusta de verdade à tela do celular (antes o navegador desenhava a página como um desktop e ela ficava minúscula). Campos de texto não dão mais zoom ao tocar no iPhone, a altura acompanha a barra do navegador e há margens para o notch.
+- Dá para adicionar o Clawos à tela de início do celular ("Adicionar à Tela de Início") e abrir como app, em tela cheia.
+
 ## 0.3.1
 
 - Acesso remoto: quando o Tailscale pede para autorizar o recurso Serve na sua rede (primeira vez), o Clawos explica o passo e mostra os botões "Autorizar no Tailscale" e "Já autorizei — tentar de novo".

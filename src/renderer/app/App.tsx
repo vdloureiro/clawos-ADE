@@ -139,7 +139,7 @@ export function App() {
 
   if (mobile)
     return (
-      <div className="flex h-full flex-col">
+      <div className="safe-top safe-bottom flex h-full flex-col">
         <ConnectionBanner />
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-2">
           <Button
@@ -160,7 +160,7 @@ export function App() {
         </main>
         {drawerOpen && (
           <div className="fixed inset-0 z-40 flex">
-            <aside className="flex w-[85%] max-w-80 flex-col border-r border-sidebar-border bg-sidebar pt-3 text-sidebar-foreground shadow-xl">
+            <aside className="safe-top safe-bottom flex w-[85%] max-w-80 flex-col border-r border-sidebar-border bg-sidebar pt-3 text-sidebar-foreground shadow-xl">
               {sidebar}
             </aside>
             <button

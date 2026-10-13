@@ -87,6 +87,12 @@
   body,
   #root {
     @apply h-full;
+    /* No celular, acompanha a barra do navegador que aparece e some. */
+    height: 100dvh;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   body {
     @apply overflow-hidden bg-background text-foreground antialiased select-none;
@@ -184,4 +190,26 @@
   --cm-property: #79c0ff;
   --cm-tag: #7ee787;
   --cm-invalid: #f85149;
+}
+
+/* Celular e tablet (acesso remoto). */
+@media (max-width: 767px) {
+  /* Abaixo de 16px o Safari dá zoom ao tocar no campo. */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+}
+
+/* Recortes da tela (notch, barra inferior) quando aberto como app na tela de início. */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
