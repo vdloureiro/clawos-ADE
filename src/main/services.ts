@@ -7,6 +7,7 @@ import { LayoutRepo } from './layouts/LayoutRepo'
 import { broadcast } from './remote/bus'
 import { currentBranch } from './projects/files'
 import { ProjectManager } from './projects/ProjectManager'
+import { SharedMcpStore } from './mcp/SharedMcpStore'
 import { SecretStore } from './secrets/SecretStore'
 import { SessionManager } from './sessions/SessionManager'
 import { SessionRepo } from './sessions/SessionRepo'
@@ -20,6 +21,7 @@ export interface Services {
   sessions: SessionManager
   layouts: LayoutRepo
   tasks: TaskRepo
+  sharedMcps: SharedMcpStore
 }
 
 /** Evento para todas as interfaces (janelas e aparelhos do acesso remoto). */
@@ -56,23 +58,33 @@ let services: Services | null = null
 export function initServices(): Services {
   const db = getDb()
   const projects = new ProjectManager(db)
-  const secrets = new SecretStore(db, {
+  const cipher = {
     isAvailable: () => safeStorage.isEncryptionAvailable(),
-    encrypt: (value) => safeStorage.encryptString(value),
-    decrypt: (value) => safeStorage.decryptString(value),
-  })
+    encrypt: (value: string) => safeStorage.encryptString(value),
+    decrypt: (value: Buffer) => safeStorage.decryptString(value),
+  }
+  const secrets = new SecretStore(db, cipher)
+  const sharedMcps = new SharedMcpStore(db, cipher)
   const sessions = new SessionManager({
     projects,
     secrets,
     repo: new SessionRepo(db),
     generatedRoot: join(app.getPath('userData'), 'generated'),
     send: sendToAll,
+    sharedMcps,
     notify,
     branchOf: currentBranch,
     globalMcps,
     worktrees: new WorktreeManager(join(app.getPath('userData'), 'worktrees')),
   })
-  services = { projects, secrets, sessions, layouts: new LayoutRepo(db), tasks: new TaskRepo(db) }
+  services = {
+    projects,
+    secrets,
+    sessions,
+    layouts: new LayoutRepo(db),
+    tasks: new TaskRepo(db),
+    sharedMcps,
+  }
   return services
 }
 

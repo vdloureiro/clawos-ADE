@@ -119,4 +119,24 @@ export const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  /* 7 */ `
+  -- MCPs ativos em todos os projetos (configurados nas Configurações do Clawos).
+  CREATE TABLE shared_mcps (
+    name       TEXT PRIMARY KEY,
+    config     TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  -- Tokens desses MCPs, criptografados pelo sistema (como os segredos de projeto).
+  CREATE TABLE shared_secrets (
+    name       TEXT PRIMARY KEY,
+    value      BLOB NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  -- Projetos que desligaram algum MCP global.
+  CREATE TABLE project_shared_mcp_off (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    PRIMARY KEY (project_id, name)
+  );
+  `,
 ]

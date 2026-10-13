@@ -18,6 +18,7 @@ import { getAgent, type GlobalMcp } from '../agents/registry'
 import { compile, type CompiledSession } from '../compiler/ConfigCompiler'
 import { materialize } from '../compiler/materialize'
 import type { ProjectManager } from '../projects/ProjectManager'
+import type { SharedMcpStore } from '../mcp/SharedMcpStore'
 import type { SecretStore } from '../secrets/SecretStore'
 import type { WorktreeManager } from '../worktrees/WorktreeManager'
 import { EditTracker } from './EditTracker'
@@ -42,6 +43,8 @@ export interface SessionManagerDeps {
   /** Branch git atual da pasta, ou null. */
   branchOf: (cwd: string) => Promise<string | null>
   worktrees: WorktreeManager
+  /** MCPs ativos em todos os projetos, configurados no Clawos. */
+  sharedMcps: SharedMcpStore
   /** MCPs globais do usuário no agente (o compilador os desliga na sessão). */
   globalMcps: (agentId: AgentId) => Promise<GlobalMcp[]>
 }
@@ -285,13 +288,21 @@ export class SessionManager {
   private async compileFor(summary: SessionSummary): Promise<CompiledSession> {
     const project = this.deps.projects.get(summary.projectId)
     const globalMcp = await this.deps.globalMcps(summary.agentId)
-    const { config, error } = this.deps.projects.readConfig(project.path)
+    const { config: projectConfig, error } = this.deps.projects.readConfig(project.path)
     if (error) throw new Error(error)
+    // MCPs ativos em todos os projetos (Configurações do Clawos) entram junto com os do
+    // projeto; o do projeto vence se o nome repetir, e o projeto pode desligar um global.
+    const shared = this.deps.sharedMcps.forProject(project.id, projectConfig.mcpServers)
+    const config = {
+      ...projectConfig,
+      mcpServers: { ...shared, ...projectConfig.mcpServers },
+    }
     const compiled = compile({
       agentId: summary.agentId,
       projectPath: project.path,
       config,
-      secret: (name) => this.deps.secrets.get(project.id, name),
+      secret: (name) =>
+        this.deps.secrets.get(project.id, name) ?? this.deps.sharedMcps.secret(name),
       readText: (path) => {
         try {
           return readFileSync(path, 'utf8')

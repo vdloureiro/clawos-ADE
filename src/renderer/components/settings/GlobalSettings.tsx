@@ -1,6 +1,7 @@
 import type { ThemePreference } from '@/stores/theme'
 import { AgentStatusList } from '@/components/agents/AgentStatusList'
 import { Modal } from '@/components/ui/modal'
+import { SharedMcpSettings } from '@/components/mcp/SharedMcpSettings'
 import { RemoteAccessSettings } from '@/components/remote/RemoteAccessSettings'
 import { isRemote } from '@/lib/platform'
 import { SHORTCUTS } from '@/app/commands'
@@ -17,9 +18,10 @@ export function GlobalSettings({ onClose }: { onClose: () => void }) {
   const { preference, setPreference } = useThemeStore()
   const mod = navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl+'
   return (
-    <Modal title="Configurações" onClose={onClose} className="max-w-md">
+    <Modal title="Configurações" onClose={onClose} className="max-w-2xl">
       <div className="space-y-6 p-4">
         <AgentStatusList />
+        <SharedMcpSettings />
         {!isRemote() && <RemoteAccessSettings />}
         <div className="space-y-2 px-3">
           <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

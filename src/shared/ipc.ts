@@ -3,7 +3,7 @@
  * Todo canal novo é declarado aqui; preload e main só aceitam canais desta lista.
  */
 import type { ChatState } from './chat'
-import type { ProjectConfig } from './project'
+import type { McpServerConfig, ProjectConfig } from './project'
 import type {
   AgentId,
   AgentStatus,
@@ -123,6 +123,28 @@ export interface InvokeChannels {
   'projects:getConfig': { args: [id: string]; result: ProjectConfigResult }
   'projects:saveConfig': { args: [id: string, config: ProjectConfig]; result: void }
   'projects:testMcp': { args: [id: string, serverName: string]; result: McpTestResult }
+  /** MCPs globais (de todos os projetos) e se estão ligados neste projeto. */
+  'projects:sharedMcps': { args: [projectId: string]; result: { name: string; enabled: boolean }[] }
+  'projects:setSharedMcp': {
+    args: [projectId: string, name: string, enabled: boolean]
+    result: void
+  }
+  // MCPs ativos em todos os projetos (Configurações do Clawos)
+  'mcp:sharedList': {
+    args: []
+    result: { servers: Record<string, McpServerConfig>; secrets: string[] }
+  }
+  'mcp:sharedSave': {
+    args: [name: string, server: McpServerConfig, secrets: Record<string, string>]
+    result: void
+  }
+  'mcp:sharedRemove': { args: [name: string]; result: void }
+  'mcp:sharedTest': { args: [name: string]; result: McpTestResult }
+  /** Testa um MCP ainda não salvo (assistente de projeto), com os tokens digitados. */
+  'mcp:testConfig': {
+    args: [server: McpServerConfig, secrets: Record<string, string>, cwd: string | null]
+    result: McpTestResult
+  }
   /** Caminhos relativos dos arquivos do projeto (para o `@` do chat). */
   'projects:files': { args: [id: string]; result: string[] }
 

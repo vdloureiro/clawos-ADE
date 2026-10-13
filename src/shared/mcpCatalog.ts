@@ -20,6 +20,11 @@ export interface CatalogEntry {
   name: string
   description: string
   docsUrl: string
+  /**
+   * Como conecta: `token` (chave colada aqui), `oauth` (login no navegador na primeira
+   * conexão, via mcp-remote) ou `none` (local, sem conta).
+   */
+  auth: 'token' | 'oauth' | 'none'
   fields: CatalogField[]
   /** Nome do segredo usado por cada campo `secret`. */
   secretName?: (field: string) => string
@@ -28,9 +33,85 @@ export interface CatalogEntry {
 
 const secretRef = (name: string) => `\${secret:${name}}`
 
-export const MCP_CATALOG: CatalogEntry[] = [
+/**
+ * MCP remoto com login OAuth: o `mcp-remote` abre o navegador na primeira conexão e
+ * guarda o acesso em ~/.mcp-auth (fora do projeto e do Clawos). Funciona em qualquer agente.
+ */
+const viaOAuth = (url: string): McpServerConfig => ({
+  command: 'npx',
+  args: ['-y', 'mcp-remote@latest', url],
+})
+
+const EXTRA: CatalogEntry[] = [
+  {
+    id: 'vercel',
+    name: 'Vercel',
+    auth: 'oauth',
+    description: 'Projetos, deploys, logs e documentação da Vercel. Login com a sua conta Vercel.',
+    docsUrl: 'https://vercel.com/docs/agent-resources/vercel-mcp',
+    fields: [],
+    build: () => viaOAuth('https://mcp.vercel.com'),
+  },
+  {
+    id: 'linear',
+    name: 'Linear',
+    auth: 'token',
+    description: 'Issues, projetos e ciclos do Linear (servidor remoto oficial).',
+    docsUrl: 'https://linear.app/docs/mcp',
+    fields: [
+      {
+        key: 'token',
+        label: 'API key',
+        placeholder: 'lin_api_…',
+        secret: true,
+        help: 'Em linear.app → Settings → Security & access → Personal API keys.',
+      },
+    ],
+    secretName: () => 'linear_token',
+    build: () => ({
+      type: 'http',
+      url: 'https://mcp.linear.app/mcp',
+      headers: { Authorization: `Bearer ${secretRef('linear_token')}` },
+    }),
+  },
+  {
+    id: 'sentry',
+    name: 'Sentry',
+    auth: 'token',
+    description: 'Erros, issues e rastros de performance das suas aplicações no Sentry.',
+    docsUrl: 'https://github.com/getsentry/sentry-mcp',
+    fields: [
+      {
+        key: 'token',
+        label: 'User auth token',
+        placeholder: 'sntryu_…',
+        secret: true,
+        help: 'Em sentry.io → User settings → Auth tokens (escopos org:read, project:read, event:read).',
+      },
+    ],
+    secretName: () => 'sentry_token',
+    build: () => ({
+      command: 'npx',
+      args: ['-y', '@sentry/mcp-server@latest'],
+      env: { SENTRY_ACCESS_TOKEN: secretRef('sentry_token') },
+    }),
+  },
+  {
+    id: 'cloudflare',
+    name: 'Cloudflare',
+    auth: 'oauth',
+    description: 'Workers, DNS, KV, R2 e toda a API da Cloudflare. Login com a sua conta.',
+    docsUrl:
+      'https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/',
+    fields: [],
+    build: () => viaOAuth('https://mcp.cloudflare.com/mcp'),
+  },
+]
+
+const BASE: CatalogEntry[] = [
   {
     id: 'filesystem',
+    auth: 'none',
     name: 'Filesystem',
     description: 'Ler, buscar e editar arquivos da pasta do projeto.',
     docsUrl: 'https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem',
@@ -39,6 +120,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'github',
+    auth: 'token',
     name: 'GitHub',
     description: 'Issues, pull requests, código e Actions (servidor remoto oficial do GitHub).',
     docsUrl: 'https://github.com/github/github-mcp-server',
@@ -60,6 +142,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'supabase',
+    auth: 'token',
     name: 'Supabase',
     description: 'Banco de dados, tabelas, migrations e logs de um projeto Supabase.',
     docsUrl: 'https://github.com/supabase-community/supabase-mcp',
@@ -93,6 +176,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'playwright',
+    auth: 'none',
     name: 'Playwright',
     description: 'Navegador controlado pelo agente: abrir páginas, clicar, testar fluxos.',
     docsUrl: 'https://github.com/microsoft/playwright-mcp',
@@ -101,6 +185,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'context7',
+    auth: 'none',
     name: 'Context7',
     description: 'Documentação atualizada de bibliotecas e frameworks direto no contexto.',
     docsUrl: 'https://github.com/upstash/context7',
@@ -126,6 +211,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'notion',
+    auth: 'token',
     name: 'Notion',
     description: 'Ler e editar páginas e bancos de dados do Notion.',
     docsUrl: 'https://github.com/makenotion/notion-mcp-server',
@@ -147,6 +233,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'stripe',
+    auth: 'token',
     name: 'Stripe',
     description: 'Clientes, pagamentos, produtos e assinaturas da sua conta Stripe.',
     docsUrl: 'https://github.com/stripe/agent-toolkit',
@@ -167,6 +254,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   },
   {
     id: 'memory',
+    auth: 'none',
     name: 'Memory',
     description: 'Memória persistente em grafo de conhecimento entre conversas.',
     docsUrl: 'https://github.com/modelcontextprotocol/servers/tree/main/src/memory',
@@ -174,6 +262,30 @@ export const MCP_CATALOG: CatalogEntry[] = [
     build: () => ({ command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] }),
   },
 ]
+
+/** Ordem do catálogo: os mais usados primeiro. */
+const ORDER = [
+  'github',
+  'supabase',
+  'vercel',
+  'linear',
+  'notion',
+  'stripe',
+  'sentry',
+  'cloudflare',
+  'context7',
+  'playwright',
+  'filesystem',
+  'memory',
+]
+
+export const MCP_CATALOG: CatalogEntry[] = [...BASE, ...EXTRA].sort(
+  (a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id),
+)
+
+export function catalogEntry(id: string): CatalogEntry | undefined {
+  return MCP_CATALOG.find((e) => e.id === id)
+}
 
 export interface CatalogSelection {
   /** Nome do MCP no project.yaml. */

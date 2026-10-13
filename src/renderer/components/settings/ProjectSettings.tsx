@@ -6,12 +6,12 @@ import {
   KeyRound,
   Loader2,
   Pencil,
-  Plug,
   Plus,
   Trash2,
   XCircle,
 } from 'lucide-react'
 import type { McpTestResult, ProjectConfigResult } from '@shared/ipc'
+import type { CatalogSelection } from '@shared/mcpCatalog'
 import { isRemoteMcp, secretRefs, type McpServerConfig, type ProjectConfig } from '@shared/project'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
 import type { AgentId, Project, PermissionDefault } from '@shared/types'
@@ -21,6 +21,8 @@ import { Input, Label, Textarea } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { emptyMcpForm, fromForm, toForm, type McpForm } from '@/lib/mcpForm'
 import { pickFolder } from '@/lib/platform'
+import { McpCatalogGrid, type McpStatus } from '@/components/mcp/McpCatalogGrid'
+import { McpIcon } from '@/components/mcp/McpIcon'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -322,12 +324,70 @@ function McpTab({
     setTests((t) => ({ ...t, [name]: result }))
   }
 
+  // MCPs de todos os projetos (Configurações do Clawos) e se valem aqui.
+  const [shared, setShared] = useState<{ name: string; enabled: boolean }[]>([])
+  useEffect(() => {
+    void window.clawos.invoke('projects:sharedMcps', projectId).then(setShared)
+  }, [projectId])
+
+  // Ao abrir a aba, confere a conexão do que já está configurado (o ✓ de conectado).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const [name] of servers) void test(name)
+    }, 0)
+    return () => clearTimeout(timer)
+    // Só na abertura da aba.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const toStatus = (name: string): McpStatus => {
+    const t = tests[name]
+    if (!t) return { state: 'idle' }
+    if (t === 'loading') return { state: 'testing' }
+    return t.ok ? { state: 'ok', tools: t.tools.length } : { state: 'error', error: t.error ?? '' }
+  }
+
+  /** Adiciona do catálogo: grava no project.yaml, guarda os tokens e testa. */
+  const addFromCatalog = async (selection: CatalogSelection) => {
+    const next = {
+      ...draft,
+      mcpServers: { ...draft.mcpServers, [selection.name]: selection.server },
+    }
+    setDraft(() => next)
+    for (const [name, value] of Object.entries(selection.secrets))
+      await window.clawos.invoke('secrets:set', projectId, name, value)
+    if (await save(next)) await test(selection.name)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         Só estes MCPs ficam disponíveis para as sessões deste projeto. Use{' '}
         <code>{'${secret:nome}'}</code> para valores sensíveis.
       </p>
+      {shared.length > 0 && (
+        <div className="space-y-1.5 rounded-md border bg-muted/20 p-3">
+          <div className="text-xs font-medium">De todos os projetos</div>
+          {shared.map((m) => (
+            <label key={m.name} className="flex items-center gap-2.5 text-sm">
+              <McpIcon id={m.name} className="size-6" />
+              <span className="flex-1">{m.name}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {m.enabled ? 'ativo neste projeto' : 'desligado neste projeto'}
+              </span>
+              <input
+                type="checkbox"
+                checked={m.enabled}
+                onChange={(e) => {
+                  const enabled = e.target.checked
+                  setShared((list) => list.map((x) => (x.name === m.name ? { ...x, enabled } : x)))
+                  void window.clawos.invoke('projects:setSharedMcp', projectId, m.name, enabled)
+                }}
+              />
+            </label>
+          ))}
+        </div>
+      )}
       {servers.length === 0 && !editing && (
         <p className="text-sm text-muted-foreground">Nenhum MCP configurado.</p>
       )}
@@ -359,9 +419,20 @@ function McpTab({
           size="sm"
           onClick={() => setEditing({ original: null, form: emptyMcpForm })}
         >
-          <Plus /> Adicionar MCP
+          <Plus /> MCP personalizado
         </Button>
       )}
+      <div className="space-y-2 pt-2">
+        <div className="text-xs font-medium">Catálogo</div>
+        <McpCatalogGrid
+          added={new Set(servers.map(([name]) => name))}
+          globalNames={shared.filter((m) => m.enabled).map((m) => m.name)}
+          statusOf={toStatus}
+          onAdd={(selection) => addFromCatalog(selection)}
+          onRemove={removeServer}
+          onRetry={(name) => void test(name)}
+        />
+      </div>
     </div>
   )
 }
@@ -387,7 +458,7 @@ function McpRow({
   return (
     <div className="rounded-md border p-3">
       <div className="flex items-center gap-2">
-        <Plug className="size-4 text-muted-foreground" />
+        <McpIcon id={name} className="size-7" />
         <span className="font-medium">{name}</span>
         <span
           className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"

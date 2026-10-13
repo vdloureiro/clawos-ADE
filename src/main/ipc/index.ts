@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { homedir } from 'node:os'
+import type { McpServerConfig } from '@shared/project'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, systemPreferences } from 'electron'
 import type { InvokeArgs, InvokeChannel, InvokeResult } from '@shared/ipc'
 import packageJson from '../../../package.json'
@@ -116,7 +118,7 @@ function saveAttachment(name: string, data: Uint8Array): string {
 }
 
 export function registerIpcHandlers(): void {
-  const { projects, secrets, sessions, layouts, tasks } = getServices()
+  const { projects, secrets, sessions, layouts, tasks, sharedMcps } = getServices()
 
   handle('app:info', () => ({
     name: app.getName(),
@@ -196,28 +198,68 @@ export function registerIpcHandlers(): void {
   })
   handle('projects:getConfig', (id) => projects.readConfig(projects.get(id).path))
   handle('projects:saveConfig', (id, config) => projects.writeConfig(id, config))
-  handle('projects:testMcp', async (id, serverName) => {
-    const project = projects.get(id)
-    const { config, error } = projects.readConfig(project.path)
-    if (error) return { ok: false, tools: [], error }
-    const server = config.mcpServers?.[serverName]
-    if (!server)
-      return { ok: false, tools: [], error: `MCP "${serverName}" não está no project.yaml.` }
+  /** Conecta a um MCP (formato do project.yaml) e lista as ferramentas. */
+  const testConfig = async (
+    name: string,
+    server: McpServerConfig,
+    secret: (name: string) => string | null,
+    cwd: string,
+  ) => {
     try {
       const [compiled] = compileMcpServers({
-        agentId: project.defaultAgent,
-        projectPath: project.path,
-        config: { mcpServers: { [serverName]: server } },
-        secret: (name) => secrets.get(id, name),
+        agentId: 'claude',
+        projectPath: cwd,
+        config: { mcpServers: { [name]: server } },
+        secret,
         readText: () => null,
         generatedDir: '',
         globalMcp: [],
       })
-      return await testMcpServer(compiled!, project.path, await getShellEnv())
+      // Login no navegador (mcp-remote): dá tempo para a pessoa entrar na conta.
+      const oauth =
+        'command' in server && (server.args ?? []).some((a) => a.startsWith('mcp-remote'))
+      return await testMcpServer(compiled!, cwd, await getShellEnv(), oauth ? 180_000 : 45_000)
     } catch (e) {
       return { ok: false, tools: [], error: (e as Error).message }
     }
+  }
+
+  handle('projects:testMcp', async (id, serverName) => {
+    const project = projects.get(id)
+    const { config, error } = projects.readConfig(project.path)
+    if (error) return { ok: false, tools: [], error }
+    const server = config.mcpServers?.[serverName] ?? sharedMcps.list()[serverName]
+    if (!server) return { ok: false, tools: [], error: `MCP "${serverName}" não está configurado.` }
+    return testConfig(
+      serverName,
+      server,
+      (name) => secrets.get(id, name) ?? sharedMcps.secret(name),
+      project.path,
+    )
   })
+  handle('projects:sharedMcps', (projectId) => {
+    const off = new Set(sharedMcps.disabledFor(projectId))
+    return Object.keys(sharedMcps.list()).map((name) => ({ name, enabled: !off.has(name) }))
+  })
+  handle('projects:setSharedMcp', (projectId, name, enabled) =>
+    sharedMcps.setEnabledFor(projectId, name, enabled),
+  )
+
+  // MCPs ativos em todos os projetos ---------------------------------------------
+  handle('mcp:sharedList', () => ({
+    servers: sharedMcps.list(),
+    secrets: sharedMcps.secretNames(),
+  }))
+  handle('mcp:sharedSave', (name, server, values) => sharedMcps.save(name, server, values))
+  handle('mcp:sharedRemove', (name) => sharedMcps.remove(name))
+  handle('mcp:sharedTest', (name) => {
+    const server = sharedMcps.list()[name]
+    if (!server) return { ok: false, tools: [], error: `MCP "${name}" não encontrado.` }
+    return testConfig(name, server, (n) => sharedMcps.secret(n), homedir())
+  })
+  handle('mcp:testConfig', (server, values, cwd) =>
+    testConfig('teste', server, (n) => values[n] ?? sharedMcps.secret(n), cwd ?? homedir()),
+  )
 
   handle('projects:files', (id) => listProjectFiles(projects.get(id).path))
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,9 +7,7 @@ import {
   FolderOpen,
   FolderPlus,
   GitBranch,
-  KeyRound,
   Loader2,
-  Plug,
   Plus,
   ShieldCheck,
   Sparkles,
@@ -17,7 +15,6 @@ import {
   Zap,
 } from 'lucide-react'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
-import { buildCatalogEntry, MCP_CATALOG, type CatalogEntry } from '@shared/mcpCatalog'
 import { isRemoteMcp, type McpServerConfig, type ProjectConfig } from '@shared/project'
 import {
   PROJECT_COLORS,
@@ -26,6 +23,8 @@ import {
   type PermissionDefault,
 } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
+import { McpCatalogGrid, McpStatusBadge, type McpStatus } from '@/components/mcp/McpCatalogGrid'
+import { McpIcon } from '@/components/mcp/McpIcon'
 import { McpEditor } from '@/components/settings/ProjectSettings'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
@@ -241,7 +240,9 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
             />
           )}
           {step === 'permissoes' && <PermissionStep value={permission} onChange={setPermission} />}
-          {step === 'mcps' && <McpStep mcps={mcps} setMcps={setMcps} />}
+          {step === 'mcps' && (
+            <McpStep mcps={mcps} setMcps={setMcps} cwd={inspection?.path ?? null} />
+          )}
           {step === 'skills' && (
             <SkillsStep skills={skills} setSkills={setSkills} onAdd={() => void addSkillFolder()} />
           )}
@@ -494,42 +495,70 @@ function AgentsStep({
 function McpStep({
   mcps,
   setMcps,
+  cwd,
 }: {
   mcps: ChosenMcp[]
   setMcps: React.Dispatch<React.SetStateAction<ChosenMcp[]>>
+  cwd: string | null
 }) {
-  const [configuring, setConfiguring] = useState<CatalogEntry | null>(null)
-  const [values, setValues] = useState<Record<string, string>>({})
   const [custom, setCustom] = useState<McpForm | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [status, setStatus] = useState<Record<string, McpStatus>>({})
+  const [globals, setGlobals] = useState<string[]>([])
   const taken = new Set(mcps.map((m) => m.name))
 
-  const addFromCatalog = (entry: CatalogEntry, vals: Record<string, string>) => {
-    try {
-      const built = buildCatalogEntry(entry, vals)
-      setMcps((list) => [...list, { ...built, origin: 'catálogo' }])
-      setConfiguring(null)
-      setFormError(null)
-    } catch (e) {
-      setFormError((e as Error).message)
-    }
+  useEffect(() => {
+    void window.clawos.invoke('mcp:sharedList').then((r) => setGlobals(Object.keys(r.servers)))
+  }, [])
+
+  // Testa de verdade (lista as ferramentas do MCP) para mostrar o ✓ de conectado.
+  const test = async (mcp: Pick<ChosenMcp, 'name' | 'server' | 'secrets'>) => {
+    setStatus((s) => ({ ...s, [mcp.name]: { state: 'testing' } }))
+    const result = await window.clawos
+      .invoke('mcp:testConfig', mcp.server, mcp.secrets, cwd)
+      .catch((e: Error) => ({ ok: false, tools: [], error: e.message }))
+    setStatus((s) => ({
+      ...s,
+      [mcp.name]: result.ok
+        ? { state: 'ok', tools: result.tools.length }
+        : { state: 'error', error: result.error ?? 'Falha ao conectar.' },
+    }))
   }
+
+  const others = mcps.filter((m) => m.origin !== 'catálogo')
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          Só estes MCPs ficam disponíveis para as sessões do projeto, em todos os agentes. Tokens
-          ficam no cofre do sistema — nunca no project.yaml.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Conecte os serviços que os agentes vão usar neste projeto. Tokens ficam no cofre do sistema
+        — nunca no project.yaml.
+        {globals.length > 0 && ' Os marcados como "ativo em todos os projetos" já entram sozinhos.'}
+      </p>
 
-      {mcps.length > 0 && (
+      <McpCatalogGrid
+        added={new Set(mcps.filter((m) => m.origin === 'catálogo').map((m) => m.name))}
+        globalNames={globals}
+        statusOf={(id) => status[id] ?? { state: 'idle' }}
+        onAdd={async (selection) => {
+          setMcps((list) => [
+            ...list.filter((m) => m.name !== selection.name),
+            { ...selection, origin: 'catálogo' },
+          ])
+          await test(selection)
+        }}
+        onRemove={(id) => setMcps((list) => list.filter((m) => m.name !== id))}
+        onRetry={(id) => {
+          const mcp = mcps.find((m) => m.name === id)
+          if (mcp) void test(mcp)
+        }}
+      />
+
+      {others.length > 0 && (
         <div className="space-y-2">
-          <Label>Adicionados</Label>
-          {mcps.map((m) => (
+          <Label>Outros MCPs deste projeto</Label>
+          {others.map((m) => (
             <div key={m.name} className="flex items-center gap-3 rounded-md border px-3 py-2">
-              <Plug className="size-4 shrink-0 text-muted-foreground" />
+              <McpIcon id={m.name} className="size-7" />
               <span className="text-sm font-medium">{m.name}</span>
               <span
                 className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"
@@ -537,12 +566,10 @@ function McpStep({
               >
                 {summary(m.server)}
               </span>
-              {Object.keys(m.secrets).length > 0 && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <KeyRound className="size-3" /> token guardado
-                </span>
-              )}
-              <span className="text-[11px] text-muted-foreground">{m.origin}</span>
+              <McpStatusBadge
+                status={status[m.name] ?? { state: 'idle' }}
+                onRetry={() => void test(m)}
+              />
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-accent"
@@ -555,106 +582,6 @@ function McpStep({
           ))}
         </div>
       )}
-
-      <div className="space-y-2">
-        <Label>Catálogo</Label>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {MCP_CATALOG.map((entry) => {
-            const added = taken.has(entry.id)
-            return (
-              <div
-                key={entry.id}
-                className={cn(
-                  'rounded-md border p-3',
-                  configuring?.id === entry.id && 'sm:col-span-2',
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">{entry.name}</div>
-                    <div className="text-xs text-muted-foreground">{entry.description}</div>
-                  </div>
-                  <Button
-                    variant={added ? 'ghost' : 'outline'}
-                    size="sm"
-                    className="h-7 shrink-0"
-                    disabled={added}
-                    onClick={() => {
-                      setFormError(null)
-                      if (entry.fields.length === 0) addFromCatalog(entry, {})
-                      else {
-                        setConfiguring(entry)
-                        setValues(
-                          entry.fields.some((f) => f.key === 'readOnly') ? { readOnly: 'sim' } : {},
-                        )
-                      }
-                    }}
-                  >
-                    {added ? (
-                      <>
-                        <Check /> Adicionado
-                      </>
-                    ) : (
-                      <>
-                        <Plus /> Adicionar
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {configuring?.id === entry.id && (
-                  <div className="mt-3 space-y-3 border-t pt-3">
-                    {entry.fields.map((field) =>
-                      field.key === 'readOnly' ? (
-                        <label key={field.key} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={values['readOnly'] !== 'não'}
-                            onChange={(e) =>
-                              setValues((v) => ({
-                                ...v,
-                                readOnly: e.target.checked ? 'sim' : 'não',
-                              }))
-                            }
-                          />
-                          {field.label}
-                        </label>
-                      ) : (
-                        <div key={field.key} className="space-y-1">
-                          <Label>
-                            {field.label}
-                            {field.optional && ' (opcional)'}
-                          </Label>
-                          <Input
-                            type={field.secret ? 'password' : 'text'}
-                            value={values[field.key] ?? ''}
-                            placeholder={field.placeholder}
-                            className="font-mono"
-                            onChange={(e) =>
-                              setValues((v) => ({ ...v, [field.key]: e.target.value }))
-                            }
-                          />
-                          {field.help && (
-                            <p className="text-[11px] text-muted-foreground">{field.help}</p>
-                          )}
-                        </div>
-                      ),
-                    )}
-                    {formError && <p className="text-xs text-red-600">{formError}</p>}
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setConfiguring(null)}>
-                        Cancelar
-                      </Button>
-                      <Button size="sm" onClick={() => addFromCatalog(entry, values)}>
-                        Adicionar {entry.name}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
 
       <div className="space-y-2">
         <Label>Personalizado</Label>
@@ -671,12 +598,16 @@ function McpStep({
               try {
                 const [mcpName, server] = fromForm(custom)
                 if (taken.has(mcpName)) throw new Error(`Já existe um MCP chamado "${mcpName}".`)
-                setMcps((list) => [
-                  ...list,
-                  { name: mcpName, server, secrets: {}, origin: 'personalizado' },
-                ])
+                const mcp: ChosenMcp = {
+                  name: mcpName,
+                  server,
+                  secrets: {},
+                  origin: 'personalizado',
+                }
+                setMcps((list) => [...list, mcp])
                 setCustom(null)
                 setFormError(null)
+                void test(mcp)
               } catch (e) {
                 setFormError((e as Error).message)
               }

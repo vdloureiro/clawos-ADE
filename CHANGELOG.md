@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- **Catálogo de MCPs com logos**: GitHub, Supabase, Vercel, Linear, Notion, Stripe, Sentry, Cloudflare, Context7, Playwright, Filesystem e Memory, com os logos das marcas em preto e branco. Cada um mostra como conecta (token, login no navegador ou local).
+- **✓ Conectado**: ao adicionar um MCP, o Clawos testa a conexão de verdade e mostra o check (ou o erro, com "tentar de novo"). Vercel e Cloudflare conectam com login no navegador.
+- **MCPs em todos os projetos**: em Configurações, conecte uma vez (ex.: GitHub) e o MCP fica disponível em todas as conversas. Cada projeto pode desligar um MCP global nas configurações dele. Os tokens ficam no cofre do sistema.
+
 ## 0.3.3
 
 - Ícone do Clawos ao adicionar à tela de início do celular ou tablet: versão própria para iPhone/iPad e Android, que preenche o formato do ícone (sem a borda escura).
