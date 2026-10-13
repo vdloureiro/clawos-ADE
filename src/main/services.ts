@@ -4,6 +4,7 @@ import type { SessionInfo } from '@shared/types'
 import { globalMcps } from './agents/detect'
 import { getDb } from './db'
 import { LayoutRepo } from './layouts/LayoutRepo'
+import { broadcast } from './remote/bus'
 import { currentBranch } from './projects/files'
 import { ProjectManager } from './projects/ProjectManager'
 import { SecretStore } from './secrets/SecretStore'
@@ -21,8 +22,9 @@ export interface Services {
   tasks: TaskRepo
 }
 
+/** Evento para todas as interfaces (janelas e aparelhos do acesso remoto). */
 export function sendToAll(channel: string, payload: unknown): void {
-  for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
+  broadcast(channel, payload)
 }
 
 /** Notificação do SO quando a janela não está em foco; o clique abre a sessão. */

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- **Acesso remoto**: use o Clawos do seu computador pelo celular, tablet ou outro computador, pelo navegador. Ligue em Configurações → Acesso remoto. As conversas, os agentes e os arquivos continuam no seu computador.
+  - Conexão pela sua rede **Tailscale** (botão "Publicar na minha rede Tailscale"): HTTPS e acesso só para os seus aparelhos, sem abrir nenhuma porta para a internet. O Clawos escuta apenas no próprio computador.
+  - **Pareamento por QR code** (código de uso único, válido por 10 minutos). Cada aparelho recebe uma chave própria e pode ser desconectado a qualquer momento.
+  - Funções que agiriam na tela do computador (janelas do sistema, Finder) ficam bloqueadas para aparelhos remotos; anexos são enviados do aparelho e pastas são escolhidas por um navegador de pastas.
+  - O computador não entra em repouso enquanto o acesso remoto estiver ligado.
+- **Modo celular**: em telas pequenas, a barra lateral vira um menu e a tela mostra uma conversa por vez; arquivos abrem em tela cheia.
+
 ## 0.2.1
 
 - **Pastas na barra lateral** para organizar projetos (ex.: uma pasta por cliente). Crie pelo ícone de pasta ao lado de "Projetos", arraste projetos para dentro, para fora ou para reordenar, e abra/feche cada pasta. Também dá para mover pelo menu do projeto ("Mover para pasta"). Renomeie com duplo clique; excluir uma pasta não apaga nenhum projeto.

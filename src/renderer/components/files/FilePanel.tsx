@@ -16,6 +16,7 @@ import type { FileContent } from '@shared/types'
 import { Markdown } from '@/components/chat/Markdown'
 import { Button } from '@/components/ui/button'
 import { fileName } from '@/lib/filePanels'
+import { isRemote } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { useDirtyFiles } from '@/stores/dirtyFiles'
 import { CodeEditor, type CodeEditorHandle } from './CodeEditor'
@@ -202,18 +203,22 @@ export function FilePanel({
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             </ToolButton>
           )}
-          <ToolButton
-            title="Abrir no app padrão"
-            onClick={() => void window.clawos.invoke('shell:openPath', path)}
-          >
-            <SquareArrowOutUpRight className="size-3.5" />
-          </ToolButton>
-          <ToolButton
-            title="Mostrar no Finder"
-            onClick={() => void window.clawos.invoke('shell:showItem', path)}
-          >
-            <FolderOpen className="size-3.5" />
-          </ToolButton>
+          {!isRemote() && (
+            <>
+              <ToolButton
+                title="Abrir no app padrão"
+                onClick={() => void window.clawos.invoke('shell:openPath', path)}
+              >
+                <SquareArrowOutUpRight className="size-3.5" />
+              </ToolButton>
+              <ToolButton
+                title="Mostrar no Finder"
+                onClick={() => void window.clawos.invoke('shell:showItem', path)}
+              >
+                <FolderOpen className="size-3.5" />
+              </ToolButton>
+            </>
+          )}
         </div>
       </header>
 
@@ -282,7 +287,7 @@ export function FilePanel({
             {file.kind === 'binary' && 'Este arquivo não é texto e não pode ser exibido aqui.'}
             {file.kind === 'too_large' &&
               `Arquivo grande demais para exibir aqui (${formatSize(file.size)}).`}
-            {file.kind !== 'missing' && (
+            {file.kind !== 'missing' && !isRemote() && (
               <Button
                 size="sm"
                 variant="outline"

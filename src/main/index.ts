@@ -1,10 +1,11 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, dialog, powerMonitor, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { closeDb } from './db'
+import { closeDb, getDb } from './db'
 import { registerIpcHandlers } from './ipc'
 import { buildMenu } from './menu'
 import { handleMlProtocol, registerMlScheme } from './ml/mlProtocol'
+import { initRemote, stopRemote } from './remote/remote'
 import { getServices, initServices } from './services'
 import { killAllTerminals } from './terminals/terminals'
 
@@ -58,6 +59,7 @@ app.whenReady().then(() => {
     quitConfirmed = true
   })
   handleMlProtocol(join(__dirname, '../renderer'))
+  initRemote(getDb(), join(__dirname, '../renderer'))
   registerIpcHandlers()
   buildMenu()
   createWindow()
@@ -87,6 +89,7 @@ app.on('before-quit', (event) => {
 })
 
 app.on('will-quit', () => {
+  stopRemote()
   getServices().sessions.stopAll()
   killAllTerminals()
   closeDb()

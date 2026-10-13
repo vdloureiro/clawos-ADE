@@ -11,6 +11,7 @@ import { ArrowUp, AtSign, FileText, ImageIcon, Paperclip, Square, X } from 'luci
 import type { SessionConfigOption } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { isRemote, pickFiles as pickSystemFiles, uploadFiles } from '@/lib/platform'
 import { ConfigPickers } from './ConfigPickers'
 import { filterFiles, mentionAt, type Mention } from './mentions'
 import { VoiceButton } from './VoiceButton'
@@ -75,7 +76,7 @@ export function ChatInput({
   }
 
   const pickFiles = async () => {
-    addAttachments(await window.clawos.invoke('dialog:pickFiles'))
+    addAttachments(await pickSystemFiles())
     ref.current?.focus()
   }
 
@@ -90,6 +91,16 @@ export function ChatInput({
     e.preventDefault()
     void (async () => {
       try {
+        if (isRemote()) {
+          // Navegador (acesso remoto): o arquivo é enviado para o computador.
+          const saved = await uploadFiles(files)
+          addAttachments(saved)
+          files.forEach((file, i) => {
+            if (file.type.startsWith('image/'))
+              setPreviews((p) => ({ ...p, [saved[i]!]: URL.createObjectURL(file) }))
+          })
+          return
+        }
         const fromSystem = await window.clawos.invoke('clipboard:filePaths')
         if (fromSystem.length > 0) return addAttachments(fromSystem)
         for (const file of files) {
@@ -193,7 +204,9 @@ export function ChatInput({
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
     setDragging(false)
-    addAttachments([...e.dataTransfer.files].map((f) => window.clawos.pathForFile(f)))
+    const files = [...e.dataTransfer.files]
+    if (isRemote()) void uploadFiles(files).then(addAttachments)
+    else addAttachments(files.map((f) => window.clawos.pathForFile(f)))
   }
 
   return (

@@ -14,6 +14,7 @@ import type {
   NewProjectInput,
   PermissionDefault,
   ProjectFolder,
+  RemoteStatus,
   SidebarArrangement,
   Project,
   SessionConfigOption,
@@ -74,6 +75,18 @@ export interface InvokeChannels {
     result: { ok: true; mtime: number } | { ok: false; conflict: true; mtime: number }
   }
   'files:watch': { args: [path: string]; result: void }
+  /** Pastas dentro de `path` (padrão: pasta do usuário), para escolher pasta pelo navegador. */
+  'fs:listDirs': {
+    args: [path: string | null]
+    result: { path: string; parent: string | null; dirs: string[] }
+  }
+  // Acesso remoto (só pelo app desktop; bloqueados para aparelhos remotos)
+  'remote:status': { args: []; result: RemoteStatus }
+  'remote:setEnabled': { args: [enabled: boolean]; result: RemoteStatus }
+  'remote:newPairing': { args: []; result: RemoteStatus }
+  'remote:revoke': { args: [deviceId: string]; result: RemoteStatus }
+  'remote:setupTailscale': { args: []; result: RemoteStatus }
+  'remote:stopTailscale': { args: []; result: RemoteStatus }
   'files:unwatch': { args: [path: string]; result: void }
 
   'agents:status': { args: [refresh?: boolean]; result: AgentStatus[] }

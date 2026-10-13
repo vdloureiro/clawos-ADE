@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Mic, Square } from 'lucide-react'
+import { isRemote } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { decodeAudio, loadTranscriber, transcribe, type LoadProgress } from '@/lib/transcribe'
 
@@ -48,7 +49,8 @@ export function VoiceButton({
 
   const start = async () => {
     try {
-      if (!(await window.clawos.invoke('media:microphone'))) {
+      // No navegador (acesso remoto) quem pede a permissão é o próprio navegador.
+      if (!isRemote() && !(await window.clawos.invoke('media:microphone'))) {
         onError(
           'Sem acesso ao microfone. Libere o Clawos em Ajustes do Sistema › Privacidade e Segurança › Microfone.',
         )

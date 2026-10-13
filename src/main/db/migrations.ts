@@ -105,4 +105,18 @@ export const MIGRATIONS: string[] = [
   -- Modo de permissão das conversas novas: 'auto', 'ask' ou NULL (última escolha).
   ALTER TABLE projects ADD COLUMN permission_default TEXT;
   `,
+  /* 6 */ `
+  -- Acesso remoto: aparelhos pareados (só o hash da chave é guardado) e ajustes do app.
+  CREATE TABLE remote_devices (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL,
+    token_hash   TEXT NOT NULL UNIQUE,
+    created_at   INTEGER NOT NULL,
+    last_seen_at INTEGER
+  );
+  CREATE TABLE app_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ]

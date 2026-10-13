@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { BrowserWindow } from 'electron'
+import { broadcast } from '../remote/bus'
 import * as pty from 'node-pty'
 import { getShellEnv } from '../agents/shellEnv'
 
@@ -10,7 +10,7 @@ import { getShellEnv } from '../agents/shellEnv'
 const terminals = new Map<string, pty.IPty>()
 
 function send(channel: 'terminal:data' | 'terminal:exit', payload: unknown): void {
-  for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
+  broadcast(channel, payload)
 }
 
 export async function openTerminal(

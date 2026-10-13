@@ -1,6 +1,7 @@
 import {
   closeSync,
   openSync,
+  readdirSync,
   readFileSync,
   readSync,
   renameSync,
@@ -9,7 +10,7 @@ import {
   watchFile,
   writeFileSync,
 } from 'node:fs'
-import { extname, isAbsolute, resolve } from 'node:path'
+import { dirname, extname, isAbsolute, join, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
 import type { FileContent } from '@shared/types'
 
@@ -137,5 +138,29 @@ export class FileWatchers {
     } else {
       this.watched.set(path, count - 1)
     }
+  }
+}
+
+/**
+ * Subpastas de `path` para escolher a pasta de um projeto pelo navegador (acesso
+ * remoto). Fica restrito à pasta do usuário; pastas ocultas não aparecem.
+ */
+export function listDirs(path: string | null): {
+  path: string
+  parent: string | null
+  dirs: string[]
+} {
+  const home = homedir()
+  const target = resolve(path ?? home)
+  if (target !== home && !target.startsWith(home + sep))
+    throw new Error('Só é possível navegar dentro da sua pasta de usuário.')
+  const dirs = readdirSync(target, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
+    .map((d) => d.name)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return {
+    path: target,
+    parent: target === home ? null : dirname(target),
+    dirs: dirs.map((d) => join(target, d)),
   }
 }

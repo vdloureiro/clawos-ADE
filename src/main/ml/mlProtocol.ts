@@ -36,14 +36,26 @@ export function registerMlScheme(): void {
 }
 
 export function handleMlProtocol(rendererDir: string): void {
-  const modelsDir = join(app.getPath('userData'), 'models')
-  protocol.handle(ML_SCHEME, async (request) => {
+  protocol.handle(ML_SCHEME, (request) => {
     const url = new URL(request.url)
-    const path = decodeURIComponent(url.pathname).replace(/^\/+/, '')
-    if (url.host === 'app') return serveFile(rendererDir, path)
-    if (url.host === 'hf') return serveModel(modelsDir, path, request.headers.get('range'))
-    return new Response('Not found', { status: 404 })
+    return mlResponse(rendererDir, url.host, url.pathname, request.headers.get('range'))
   })
+}
+
+/**
+ * Resposta para `app/<arquivo>` ou `hf/<modelo>`; usada pelo protocolo do app e pela
+ * rota `/ml/...` do acesso remoto (o navegador do celular baixa o modelo por aqui).
+ */
+export function mlResponse(
+  rendererDir: string,
+  host: string,
+  pathname: string,
+  range: string | null,
+): Promise<Response> | Response {
+  const path = decodeURIComponent(pathname).replace(/^\/+/, '')
+  if (host === 'app') return serveFile(rendererDir, path)
+  if (host === 'hf') return serveModel(join(app.getPath('userData'), 'models'), path, range)
+  return new Response('Not found', { status: 404 })
 }
 
 /** Caminho dentro de `root`, ou null se tentar sair dele (`..`). */

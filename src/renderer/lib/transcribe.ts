@@ -76,7 +76,9 @@ export function loadTranscriber(
     // Downloads passam pelo processo principal, que guarda os arquivos em disco.
     const fetchViaApp = (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      return fetch(url.replace(/^https:\/\/huggingface\.co\//, 'clawos-ml://hf/'), init)
+      // No navegador (acesso remoto), o mesmo cache passa pela rota /ml/ do computador.
+      const base = window.__clawosRemote ? `${location.origin}/ml/hf/` : 'clawos-ml://hf/'
+      return fetch(url.replace(/^https:\/\/huggingface\.co\//, base), init)
     }
     env.fetch = fetchViaApp as typeof env.fetch
     env.useBrowserCache = false

@@ -183,6 +183,36 @@ export interface ProjectFolder {
   sortOrder: number
 }
 
+/** Aparelho pareado no acesso remoto. */
+export interface RemoteDevice {
+  id: string
+  name: string
+  createdAt: number
+  lastSeenAt: number | null
+}
+
+/** Estado do acesso remoto, para a tela de configurações do app desktop. */
+export interface RemoteStatus {
+  enabled: boolean
+  /** Endereço local (só deste computador). */
+  localUrl: string
+  /** Erro ao iniciar o servidor (ex.: porta ocupada). */
+  error: string | null
+  tailscale: {
+    installed: boolean
+    /** Logado e conectado à rede Tailscale. */
+    running: boolean
+    /** Endereço HTTPS na rede Tailscale, quando o `tailscale serve` está ativo. */
+    url: string | null
+    /** Nome da máquina na rede (MagicDNS), mesmo sem o serve ativo. */
+    host: string | null
+  }
+  /** Código de pareamento ativo (QR code). */
+  pairing: { url: string; expiresAt: number } | null
+  devices: RemoteDevice[]
+  connected: number
+}
+
 /** Ordem completa da barra lateral, gravada de uma vez após arrastar. */
 export type SidebarArrangement = (
   { type: 'folder'; id: string; projectIds: string[] } | { type: 'project'; id: string }

@@ -13,6 +13,9 @@ interface UiState {
   newProjectOpen: boolean
   /** Assistente de primeiro acesso (instalar agentes, entrar, criar projeto). */
   onboardingOpen: boolean
+  /** Celular: arquivo aberto em tela cheia (no desktop ele abre numa aba do dock). */
+  mobileFile: { path: string; line?: number; nonce: number } | null
+  setMobileFile: (file: { path: string; line?: number; nonce: number } | null) => void
   setOnboardingOpen: (open: boolean) => void
   setPaletteOpen: (open: boolean) => void
   openProjectSettings: (projectId: string | null) => void
@@ -28,6 +31,8 @@ export const useUiStore = create<UiState>((set) => ({
   globalSettingsOpen: false,
   newProjectOpen: false,
   onboardingOpen: false,
+  mobileFile: null,
+  setMobileFile: (mobileFile) => set({ mobileFile }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   openProjectSettings: (settingsProjectId) => set({ settingsProjectId }),

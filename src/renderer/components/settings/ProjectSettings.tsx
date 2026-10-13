@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { emptyMcpForm, fromForm, toForm, type McpForm } from '@/lib/mcpForm'
+import { pickFolder } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -542,7 +543,7 @@ function SkillsTab({ project, draft, setDraft }: DraftProps & { project: Project
   const skills = draft.skills ?? []
 
   const addSkill = async () => {
-    const folder = await window.clawos.invoke('dialog:pickFolder', 'Pasta da skill (com SKILL.md)')
+    const folder = await pickFolder('Pasta da skill (com SKILL.md)')
     if (!folder) return
     const base = project.path.endsWith('/') ? project.path : `${project.path}/`
     const entry = folder.startsWith(base) ? `./${folder.slice(base.length)}` : folder

@@ -4,6 +4,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 import { useUiStore } from '@/stores/ui'
 import { filePanelId, isFilePanel } from './filePanels'
+import { isMobileNow } from './useIsMobile'
 import { panelState, remapLayout } from './layout'
 
 /**
@@ -60,6 +61,10 @@ export function openFileInDock(
   fromPanelId?: string,
   line?: number,
 ): void {
+  if (isMobileNow()) {
+    useUiStore.getState().setMobileFile({ path, line, nonce: Date.now() })
+    return
+  }
   const api = apis.get(projectId)
   if (!api) return
   const id = filePanelId(path)
@@ -97,6 +102,8 @@ export async function openInDock(
   useProjectsStore.getState().select(projectId)
   useUiStore.getState().setView({ kind: 'chat' })
   await useSessionsStore.getState().load(sessionId)
+  // No celular não há dock: a conversa ativa é a que aparece na tela.
+  useSessionsStore.getState().setActive(projectId, sessionId)
   const api = apis.get(projectId)
   if (api) placePanel(api, sessionId, groupId)
   else pending.set(projectId, [...(pending.get(projectId) ?? []), { sessionId, groupId }])

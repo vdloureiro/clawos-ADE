@@ -32,6 +32,7 @@ import { Input, Label } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { cleanIpcError, newSessionInDock } from '@/lib/dock'
 import { emptyMcpForm, fromForm, type McpForm } from '@/lib/mcpForm'
+import { pickFolder } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { useAgentsStore } from '@/stores/agents'
 import { useProjectsStore } from '@/stores/projects'
@@ -90,7 +91,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const canAdvance = step !== 'projeto' || (inspection !== null && name.trim() !== '')
 
   const chooseFolder = async () => {
-    const path = await window.clawos.invoke('dialog:pickFolder', 'Pasta do projeto')
+    const path = await pickFolder('Pasta do projeto')
     if (!path) return
     setError(null)
     try {
@@ -127,7 +128,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   }
 
   const addSkillFolder = async () => {
-    const folder = await window.clawos.invoke('dialog:pickFolder', 'Pasta da skill (com SKILL.md)')
+    const folder = await pickFolder('Pasta da skill (com SKILL.md)')
     if (!folder || !inspection) return
     const base = inspection.path.endsWith('/') ? inspection.path : `${inspection.path}/`
     const entry = folder.startsWith(base) ? `./${folder.slice(base.length)}` : folder

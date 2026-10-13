@@ -18,6 +18,16 @@ import {
   resolveExisting,
   writeFromViewer,
 } from '../projects/fileViewer'
+import { commands } from '../remote/bus'
+import {
+  newPairing,
+  remoteStatus,
+  revokeDevice,
+  setRemoteEnabled,
+  setupTailscale,
+  stopTailscale,
+} from '../remote/remote'
+import { listDirs } from '../projects/fileViewer'
 import { getServices, sendToAll } from '../services'
 import { taskPrompt } from '../tasks/TaskRepo'
 import { killTerminal, openTerminal, resizeTerminal, writeTerminal } from '../terminals/terminals'
@@ -28,6 +38,7 @@ type Handler<C extends InvokeChannel> = (
 
 function handle<C extends InvokeChannel>(channel: C, handler: Handler<C>): void {
   ipcMain.handle(channel, (_event, ...args) => handler(...(args as InvokeArgs<C>)))
+  commands.set(channel, (...args) => handler(...(args as InvokeArgs<C>)))
 }
 
 async function pickFolder(title?: string): Promise<string | null> {
@@ -139,6 +150,15 @@ export function registerIpcHandlers(): void {
   handle('files:resolve', (paths, cwd) => resolveExisting(paths, cwd))
   handle('files:write', (path, text, expectedMtime) => writeFromViewer(path, text, expectedMtime))
   handle('files:watch', (path) => watchers.watch(path))
+  handle('fs:listDirs', (path) => listDirs(path))
+
+  // Acesso remoto ----------------------------------------------------------------
+  handle('remote:status', () => remoteStatus())
+  handle('remote:setEnabled', (enabled) => setRemoteEnabled(enabled))
+  handle('remote:newPairing', () => newPairing())
+  handle('remote:revoke', (id) => revokeDevice(id))
+  handle('remote:setupTailscale', () => setupTailscale())
+  handle('remote:stopTailscale', () => stopTailscale())
   handle('files:unwatch', (path) => watchers.unwatch(path))
 
   // Agentes -----------------------------------------------------------------
