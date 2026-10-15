@@ -20,6 +20,7 @@ import {
 } from '@/components/mcp/McpCatalogGrid'
 import { McpIcon } from '@/components/mcp/McpIcon'
 import { SkillCatalogGrid } from '@/components/skills/SkillCatalogGrid'
+import { cachedMcpStatus, mcpStatusOnOpen, storeMcpStatus } from '@/lib/mcpStatusCache'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -286,10 +287,25 @@ function McpTab({
 }) {
   const [editing, setEditing] = useState<{ original: string | null; form: McpForm } | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
-  const [tests, setTests] = useState<Record<string, McpStatus>>({})
-  /** Resultado completo (lista de ferramentas) para a linha do MCP. */
-  const [results, setResults] = useState<Record<string, McpTestResult>>({})
   const servers = Object.entries(draft.mcpServers ?? {})
+  // Abre com o último resultado conhecido (✓ Conectado), sem testar tudo de novo.
+  const [tests, setTests] = useState<Record<string, McpStatus>>(() =>
+    Object.fromEntries(
+      servers.flatMap(([name, server]) => {
+        const entry = cachedMcpStatus(projectId, name, server)
+        return entry ? [[name, entry.status]] : []
+      }),
+    ),
+  )
+  /** Resultado completo (lista de ferramentas) para a linha do MCP. */
+  const [results, setResults] = useState<Record<string, McpTestResult>>(() =>
+    Object.fromEntries(
+      servers.flatMap(([name, server]) => {
+        const result = cachedMcpStatus(projectId, name, server)?.result
+        return result ? [[name, result]] : []
+      }),
+    ),
+  )
 
   const commit = () => {
     if (!editing) return
@@ -315,15 +331,18 @@ function McpTab({
       return { ...c, mcpServers: Object.keys(next).length ? next : undefined }
     })
 
-  const test = async (name: string) => {
+  /** `silent`: confere em segundo plano, mantendo o selo atual até o resultado chegar. */
+  const test = async (name: string, silent = false, server = draft.mcpServers?.[name]) => {
     // O teste usa o project.yaml salvo; salva antes se houver alterações.
     if (dirty && !(await save())) return
-    setTests((t) => ({ ...t, [name]: { state: 'testing', since: Date.now() } }))
+    if (!silent) setTests((t) => ({ ...t, [name]: { state: 'testing', since: Date.now() } }))
+    let full: McpTestResult | undefined
     const next = await runMcpTest(async () => {
-      const result = await window.clawos.invoke('projects:testMcp', projectId, name)
-      setResults((r) => ({ ...r, [name]: result }))
-      return result
+      full = await window.clawos.invoke('projects:testMcp', projectId, name)
+      setResults((r) => ({ ...r, [name]: full! }))
+      return full
     })
+    storeMcpStatus(projectId, name, server, next, full)
     setTests((t) => ({ ...t, [name]: next }))
   }
 
@@ -333,10 +352,15 @@ function McpTab({
     void window.clawos.invoke('projects:sharedMcps', projectId).then(setShared)
   }, [projectId])
 
-  // Ao abrir a aba, confere a conexão do que já está configurado (o ✓ de conectado).
+  // Ao abrir a aba: mostra o último resultado e só testa o que nunca conectou, falhou ou
+  // está há muito tempo sem conferir (esse em segundo plano).
   useEffect(() => {
     const timer = setTimeout(() => {
-      for (const [name] of servers) void test(name)
+      const now = Date.now()
+      for (const [name, server] of servers) {
+        const { retest, silent } = mcpStatusOnOpen(projectId, name, server, now)
+        if (retest) void test(name, silent, server)
+      }
     }, 0)
     return () => clearTimeout(timer)
     // Só na abertura da aba.
@@ -354,7 +378,7 @@ function McpTab({
     setDraft(() => next)
     for (const [name, value] of Object.entries(selection.secrets))
       await window.clawos.invoke('secrets:set', projectId, name, value)
-    if (await save(next)) await test(selection.name)
+    if (await save(next)) await test(selection.name, false, selection.server)
   }
 
   return (

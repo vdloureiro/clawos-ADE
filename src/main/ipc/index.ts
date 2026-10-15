@@ -13,6 +13,7 @@ import { detectAll, resolveCli } from '../agents/detect'
 import { getAgent, installProcess } from '../agents/registry'
 import { getShellEnv, which } from '../agents/shellEnv'
 import { compileMcpServers } from '../compiler/ConfigCompiler'
+import { npxPrefixDir } from '../mcp/npxPrefix'
 import { testMcpServer } from '../mcp/testMcp'
 import { listProjectFiles } from '../projects/files'
 import {
@@ -270,6 +271,7 @@ export function registerIpcHandlers(): void {
         readText: () => null,
         generatedDir: '',
         globalMcp: [],
+        npxPrefix: npxPrefixDir(),
       })
       // Login no navegador (mcp-remote): dá tempo para a pessoa entrar na conta. Servidores
       // via npx baixam o pacote na primeira vez, o que pode levar mais de meio minuto.

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { mcpStatusOnOpen, storeMcpStatus } from '@/lib/mcpStatusCache'
 import { McpCatalogGrid, runMcpTest, type McpStatus } from './McpCatalogGrid'
+
+/** Escopo do cache de status dos MCPs de todos os projetos. */
+const SCOPE = 'shared'
 
 /**
  * MCPs ativos em todos os projetos (ex.: GitHub): configurados uma vez aqui e
@@ -19,18 +23,25 @@ export function SharedMcpSettings() {
     [],
   )
 
-  const test = useCallback(async (name: string) => {
-    setStatus((s) => ({ ...s, [name]: { state: 'testing', since: Date.now() } }))
+  const test = useCallback(async (name: string, silent = false) => {
+    if (!silent) setStatus((s) => ({ ...s, [name]: { state: 'testing', since: Date.now() } }))
     const next = await runMcpTest(() => window.clawos.invoke('mcp:sharedTest', name))
+    const { servers } = await window.clawos.invoke('mcp:sharedList')
+    storeMcpStatus(SCOPE, name, servers[name], next)
     setStatus((s) => ({ ...s, [name]: next }))
   }, [])
 
-  // Ao abrir, confere a conexão dos que já estão configurados.
+  // Ao abrir: mostra o último resultado e só testa o que precisa (ver mcpStatusOnOpen).
   useEffect(() => {
     void window.clawos.invoke('mcp:sharedList').then((r) => {
       const list = Object.keys(r.servers)
+      const now = Date.now()
       setNames(list)
-      for (const name of list) void test(name)
+      for (const name of list) {
+        const { show, retest, silent } = mcpStatusOnOpen(SCOPE, name, r.servers[name], now)
+        if (show) setStatus((s) => ({ ...s, [name]: show.status }))
+        if (retest) void test(name, silent)
+      }
     })
   }, [test])
 

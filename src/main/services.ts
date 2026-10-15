@@ -1,3 +1,4 @@
+import { npxPrefixDir } from './mcp/npxPrefix'
 import { join } from 'node:path'
 import { app, BrowserWindow, Notification, safeStorage } from 'electron'
 import type { SessionInfo } from '@shared/types'
@@ -70,6 +71,7 @@ export function initServices(): Services {
     secrets,
     repo: new SessionRepo(db),
     generatedRoot: join(app.getPath('userData'), 'generated'),
+    npxPrefix: npxPrefixDir(),
     send: sendToAll,
     sharedMcps,
     notify,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MissingSecretsError, type ProjectConfig } from '@shared/project'
 import type { AgentId } from '@shared/types'
-import { compile, GEMINI_NO_MCP, type CompileContext } from './ConfigCompiler'
+import { compile, GEMINI_NO_MCP, withNpxPrefix, type CompileContext } from './ConfigCompiler'
 
 function ctx(config: ProjectConfig, extra: Partial<CompileContext> = {}): CompileContext {
   return {
@@ -246,5 +246,32 @@ describe('ConfigCompiler — Gemini', () => {
       context: { fileName: ['GEMINI.md', 'CLAUDE.md'] },
     })
     expect(compile(ctx({ instructions: './GEMINI.md' }, { agentId: 'gemini' })).env).toEqual({})
+  })
+})
+
+describe('withNpxPrefix', () => {
+  const prefix = '/dados/mcp-npx'
+
+  it('npx -y roda de uma pasta neutra (não lê o projeto, que pode estar na nuvem)', () => {
+    expect(withNpxPrefix('npx', ['-y', '@supabase/mcp-server-supabase'], prefix)).toEqual([
+      '--prefix',
+      prefix,
+      '-y',
+      '@supabase/mcp-server-supabase',
+    ])
+    expect(withNpxPrefix('/usr/local/bin/npx', ['--yes', 'pkg'], prefix)[0]).toBe('--prefix')
+    expect(withNpxPrefix('npx.cmd', ['-y', 'pkg'], prefix)[0]).toBe('--prefix')
+  })
+
+  it('não mexe em outros comandos, npx sem -y ou --prefix já definido', () => {
+    expect(withNpxPrefix('node', ['-y', 'x'], prefix)).toEqual(['-y', 'x'])
+    expect(withNpxPrefix('npx', ['ferramenta-local'], prefix)).toEqual(['ferramenta-local'])
+    expect(withNpxPrefix('npx', ['--prefix', '/a', '-y', 'x'], prefix)).toEqual([
+      '--prefix',
+      '/a',
+      '-y',
+      'x',
+    ])
+    expect(withNpxPrefix('npx', ['-y', 'x'], undefined)).toEqual(['-y', 'x'])
   })
 })

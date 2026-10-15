@@ -36,6 +36,8 @@ export interface SessionManagerDeps {
   repo: SessionRepo
   /** Diretório (fora dos projetos) para arquivos gerados por sessão. */
   generatedRoot: string
+  /** Pasta neutra do `npx` dos MCPs. */
+  npxPrefix?: string
   /** Envia um evento para o renderer. */
   send: (channel: 'session:event' | 'sessions:changed', payload: unknown) => void
   /** Avisa o usuário (notificação do SO) que uma sessão terminou ou precisa de aprovação. */
@@ -312,6 +314,7 @@ export class SessionManager {
       },
       generatedDir: join(this.deps.generatedRoot, summary.id),
       globalMcp,
+      npxPrefix: this.deps.npxPrefix,
     })
     materialize(join(this.deps.generatedRoot, summary.id), compiled)
     return compiled

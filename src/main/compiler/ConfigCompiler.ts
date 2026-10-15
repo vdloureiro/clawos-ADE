@@ -29,6 +29,8 @@ export interface CompileContext {
   generatedDir: string
   /** MCPs configurados globalmente pelo usuário neste agente (para desligar). */
   globalMcp: GlobalMcp[]
+  /** Pasta neutra para o `npx` dos MCPs (não lê o projeto; ver `withNpxPrefix`). */
+  npxPrefix?: string
 }
 
 export interface GeneratedLink {
@@ -241,6 +243,18 @@ function compileGemini(ctx: CompileContext): CompiledSession {
 // ---------------------------------------------------------------------------
 // MCPs
 
+/**
+ * `npx -y pacote` baixa o pacote para o cache e não precisa do projeto, mas mesmo assim lê
+ * o package.json e o node_modules da pasta atual. Se o projeto tem arquivos só na nuvem
+ * (iCloud), isso trava o MCP. Com `--prefix` numa pasta neutra, o npx ignora o projeto.
+ */
+export function withNpxPrefix(command: string, args: string[], prefix: string | undefined) {
+  const npx = /^npx(\.cmd|\.exe)?$/i.test(basename(command))
+  const download = args.includes('-y') || args.includes('--yes')
+  if (!prefix || !npx || !download || args.includes('--prefix')) return args
+  return ['--prefix', prefix, ...args]
+}
+
 /** Servidores do projeto com segredos resolvidos (formato do project.yaml). */
 function resolvedMcpServers(ctx: CompileContext): [string, McpServerConfig][] {
   const missing = new Set<string>()
@@ -261,11 +275,12 @@ function resolvedMcpServers(ctx: CompileContext): [string, McpServerConfig][] {
           { type: server.type, url: sub(server.url), headers: subRecord(server.headers) },
         ]
       }
+      const command = sub(server.command)
       return [
         name,
         {
-          command: sub(server.command),
-          args: (server.args ?? []).map(sub),
+          command,
+          args: withNpxPrefix(command, (server.args ?? []).map(sub), ctx.npxPrefix),
           env: subRecord(server.env),
         },
       ]

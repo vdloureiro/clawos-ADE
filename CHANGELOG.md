@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3
+
+- **Supabase (e outros MCPs via npx) parados de conectar**: em projetos guardados numa pasta sincronizada com o iCloud ("Otimizar armazenamento do Mac"), o `npx` lia o package.json e o node_modules do projeto, que estavam só na nuvem, e travava esperando o download. Agora os MCPs que rodam com `npx -y` partem de uma pasta própria do Clawos e conectam em segundos, nas conversas e no teste de conexão.
+- **Status dos MCPs guardado**: as configurações abrem direto com o "✓ Conectado" do último teste, sem passar por "Conectando…" toda vez. O Clawos só testa de novo o que nunca conectou, o que falhou ou o que mudou de configuração; depois de 30 minutos, confere em segundo plano sem trocar o selo.
+
 ## 0.5.2
 
 - **Railway** no catálogo de MCPs (servidor oficial): projetos, serviços, deploys, logs, variáveis e bancos, com login na sua conta pelo navegador. Disponível nos projetos e em "MCPs em todos os projetos".
