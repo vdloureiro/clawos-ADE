@@ -3,6 +3,7 @@ import { AlertTriangle, FolderPlus, KeyRound, Loader2, Pencil, Plus, Trash2 } fr
 import type { McpTestResult, ProjectConfigResult } from '@shared/ipc'
 import type { CatalogSelection } from '@shared/mcpCatalog'
 import { SKILL_CATALOG, skillInstallPath } from '@shared/skillCatalog'
+import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, type ResponseLanguage } from '@shared/language'
 import { isRemoteMcp, secretRefs, type McpServerConfig, type ProjectConfig } from '@shared/project'
 import { AGENT_IDS, AGENT_META } from '@shared/agents'
 import type { AgentId, Project, PermissionDefault } from '@shared/types'
@@ -211,6 +212,32 @@ function GeneralTab({ project, draft, setDraft }: DraftProps & { project: Projec
         </select>
         <p className="text-[11px] text-muted-foreground">
           Vale para conversas novas (salva na hora). Cada conversa pode trocar pela barra do chat.
+        </p>
+      </div>
+      <div className="space-y-1">
+        <Label>Idioma das respostas</Label>
+        <select
+          className="h-8 w-full rounded-md border bg-background px-2 text-sm"
+          value={draft.language ?? DEFAULT_LANGUAGE}
+          onChange={(e) =>
+            update((c) => ({
+              ...c,
+              language:
+                e.target.value === DEFAULT_LANGUAGE
+                  ? undefined
+                  : (e.target.value as ResponseLanguage),
+            }))
+          }
+        >
+          {LANGUAGE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-[11px] text-muted-foreground">
+          Instrução de sistema para todos os agentes do projeto. Vale para conversas novas e para as
+          que forem reabertas.
         </p>
       </div>
       <div className="space-y-1">

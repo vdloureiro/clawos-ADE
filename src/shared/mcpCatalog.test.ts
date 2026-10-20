@@ -8,7 +8,14 @@ describe('catálogo de MCPs', () => {
   it('toda entrada gera uma configuração válida para o project.yaml', () => {
     for (const e of MCP_CATALOG) {
       const values = Object.fromEntries(
-        e.fields.map((f) => [f.key, f.key === 'readOnly' ? 'sim' : 'valor']),
+        e.fields.map((f) => [
+          f.key,
+          f.key === 'readOnly'
+            ? 'sim'
+            : f.key === 'clientId'
+              ? 'x.apps.googleusercontent.com'
+              : 'valor',
+        ]),
       )
       const { server } = buildCatalogEntry(e, values)
       expect(mcpServerSchema.safeParse(server).success, e.id).toBe(true)
@@ -78,6 +85,35 @@ describe('Meta Ads', () => {
     expect(server).toMatchObject({ headers: { Authorization: 'Bearer ${secret:meta_ads_token}' } })
     expect(secrets).toEqual({ meta_ads_token: 'EAAx' })
     expect(needsClaudeLogin(server)).toBe(false)
+  })
+
+  it('Google Drive: OAuth com o Client ID do usuário, porta fixa e token de renovação', () => {
+    const drive = catalogEntry('google-drive')!
+    const { server, secrets } = buildCatalogEntry(drive, {
+      clientId: '123-abc.apps.googleusercontent.com',
+      clientSecret: 'GOCSPX-x',
+    })
+    expect(secrets).toEqual({
+      google_drive_client_id: '123-abc.apps.googleusercontent.com',
+      google_drive_client_secret: 'GOCSPX-x',
+    })
+    const args = 'args' in server ? server.args! : []
+    expect(args.slice(0, 4)).toEqual([
+      '-y',
+      'mcp-remote@latest',
+      'https://drivemcp.googleapis.com/mcp/v1',
+      '3340',
+    ])
+    // Segredos só como referência ao cofre, nunca o valor no project.yaml.
+    expect(JSON.stringify(server)).not.toContain('GOCSPX-x')
+    expect(JSON.parse(args[args.indexOf('--static-oauth-client-info') + 1]!)).toEqual({
+      client_id: '${secret:google_drive_client_id}',
+      client_secret: '${secret:google_drive_client_secret}',
+    })
+    expect(args).toContain('access_type=offline')
+    expect(() => buildCatalogEntry(drive, { clientId: 'errado', clientSecret: 'x' })).toThrow(
+      /googleusercontent/,
+    )
   })
 
   it('Railway entra pelo mcp-remote (login no navegador)', () => {

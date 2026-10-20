@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0
+
+- **Idioma das respostas**: nova etapa "Idioma" no assistente de novo projeto (e o mesmo campo nas configurações do projeto): Português (Brasil), English, Español ou "Mesmo idioma da pergunta". A escolha vai como instrução de sistema para o Claude e o Codex, então vale em toda resposta, mesmo com código, arquivos, logs e ferramentas em inglês. Projetos sem escolha respondem em português.
+- **Google Drive** no catálogo de MCPs (servidor oficial do Google): buscar, ler e criar arquivos com login na sua conta Google. Como o Google não libera login automático para apps de terceiros, a conexão usa um Client ID do seu projeto no Google Cloud; o Clawos explica o passo a passo e guarda o Client ID e o Client Secret no cofre do sistema.
+
 ## 0.5.3
 
 - **Supabase (e outros MCPs via npx) parados de conectar**: em projetos guardados numa pasta sincronizada com o iCloud ("Otimizar armazenamento do Mac"), o `npx` lia o package.json e o node_modules do projeto, que estavam só na nuvem, e travava esperando o download. Agora os MCPs que rodam com `npx -y` partem de uma pasta própria do Clawos e conectam em segundos, nas conversas e no teste de conexão.

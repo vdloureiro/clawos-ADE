@@ -1,7 +1,7 @@
 {
   "name": "clawos",
   "productName": "Clawos",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "Desktop app to work with multiple AI coding agents across projects, in a clean chat UI.",
   "license": "MIT",
   "author": {

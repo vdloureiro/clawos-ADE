@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { languageInstruction } from '@shared/language'
 import { MissingSecretsError, type ProjectConfig } from '@shared/project'
 import type { AgentId } from '@shared/types'
 import { compile, GEMINI_NO_MCP, withNpxPrefix, type CompileContext } from './ConfigCompiler'
@@ -55,6 +56,7 @@ describe('ConfigCompiler — Claude', () => {
     expect(result.links).toEqual([])
     expect(result.meta).toEqual({
       claudeCode: { options: { strictMcpConfig: true, settingSources: ['project', 'local'] } },
+      systemPrompt: { append: languageInstruction('pt-BR') },
     })
   })
 
@@ -117,14 +119,19 @@ describe('ConfigCompiler — Claude', () => {
   })
 
   it('CLAUDE.md na raiz é nativo; outro arquivo vira append no system prompt', () => {
-    expect(compile(ctx({ instructions: './CLAUDE.md' })).meta).not.toHaveProperty('systemPrompt')
+    // CLAUDE.md nativo: o append leva só o idioma.
+    expect(compile(ctx({ instructions: './CLAUDE.md' })).meta['systemPrompt']).toEqual({
+      append: languageInstruction(undefined),
+    })
     const result = compile(
       ctx(
         { instructions: './docs/AGENTS.md' },
         { readText: (p) => (p === '/p/dralab/docs/AGENTS.md' ? 'regras' : null) },
       ),
     )
-    expect(result.meta).toMatchObject({ systemPrompt: { append: 'regras' } })
+    expect(result.meta).toMatchObject({
+      systemPrompt: { append: `regras\n\n${languageInstruction(undefined)}` },
+    })
   })
 })
 
@@ -160,6 +167,7 @@ describe('ConfigCompiler — Codex', () => {
         },
         api: { url: 'https://x/mcp', http_headers: {} },
       },
+      developer_instructions: languageInstruction(undefined),
     })
   })
 
@@ -188,12 +196,16 @@ describe('ConfigCompiler — Codex', () => {
 
   it('instruções extras viram developer_instructions; AGENTS.md é nativo', () => {
     expect(
-      codexConfig(compile(ctx({ instructions: './AGENTS.md' }, { agentId: 'codex' }))),
-    ).not.toHaveProperty('developer_instructions')
+      codexConfig(compile(ctx({ instructions: './AGENTS.md' }, { agentId: 'codex' })))[
+        'developer_instructions'
+      ],
+    ).toBe(languageInstruction(undefined))
     const result = compile(
       ctx({ instructions: './CLAUDE.md' }, { agentId: 'codex', readText: () => 'regras' }),
     )
-    expect(codexConfig(result)['developer_instructions']).toBe('regras')
+    expect(codexConfig(result)['developer_instructions']).toBe(
+      `regras\n\n${languageInstruction(undefined)}`,
+    )
   })
 
   it('skills fora de .agents/skills entram por um diretório extra gerado', () => {
@@ -246,6 +258,19 @@ describe('ConfigCompiler — Gemini', () => {
       context: { fileName: ['GEMINI.md', 'CLAUDE.md'] },
     })
     expect(compile(ctx({ instructions: './GEMINI.md' }, { agentId: 'gemini' })).env).toEqual({})
+  })
+})
+
+describe('idioma das respostas', () => {
+  it('padrão em português, e a escolha do projeto vale para Claude e Codex', () => {
+    expect(languageInstruction(undefined)).toContain('português do Brasil')
+    const claude = compile(ctx({ language: 'en' }))
+    expect(claude.meta['systemPrompt']).toEqual({ append: languageInstruction('en') })
+    expect(languageInstruction('en')).toContain('ALWAYS reply to the user in English')
+    const codex = compile(ctx({ language: 'es' }, { agentId: 'codex' }))
+    expect(JSON.parse(codex.env['CODEX_CONFIG']!)['developer_instructions']).toBe(
+      languageInstruction('es'),
+    )
   })
 })
 

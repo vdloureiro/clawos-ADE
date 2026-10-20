@@ -1,3 +1,9 @@
+import {
+  DEFAULT_LANGUAGE,
+  LANGUAGE_OPTIONS,
+  languageLabel,
+  type ResponseLanguage,
+} from '@shared/language'
 import { SKILL_CATALOG, skillInstallPath } from '@shared/skillCatalog'
 import { SkillCatalogGrid } from '@/components/skills/SkillCatalogGrid'
 import { useEffect, useState } from 'react'
@@ -9,6 +15,7 @@ import {
   FolderOpen,
   FolderPlus,
   GitBranch,
+  Languages,
   Loader2,
   Plus,
   ShieldCheck,
@@ -44,12 +51,13 @@ import { useAgentsStore } from '@/stores/agents'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 
-type Step = 'projeto' | 'agentes' | 'permissoes' | 'mcps' | 'skills' | 'revisao'
+type Step = 'projeto' | 'agentes' | 'permissoes' | 'idioma' | 'mcps' | 'skills' | 'revisao'
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'projeto', label: 'Projeto' },
   { id: 'agentes', label: 'Agentes' },
   { id: 'permissoes', label: 'Permissões' },
+  { id: 'idioma', label: 'Idioma' },
   { id: 'mcps', label: 'MCPs' },
   { id: 'skills', label: 'Skills' },
   { id: 'revisao', label: 'Revisão' },
@@ -90,6 +98,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [skills, setSkills] = useState<SkillChoice[]>([])
   const [openChat, setOpenChat] = useState(true)
   const [permission, setPermission] = useState<PermissionDefault>('ask')
+  const [language, setLanguage] = useState<ResponseLanguage>(DEFAULT_LANGUAGE)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,6 +116,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       setName(info.alreadyAdded?.name ?? info.suggestedName)
       if (info.alreadyAdded) setColor(info.alreadyAdded.color)
       if (info.alreadyAdded?.permissionDefault) setPermission(info.alreadyAdded.permissionDefault)
+      setLanguage(config.language ?? DEFAULT_LANGUAGE)
       setDefaultAgent(config.defaultAgent ?? 'claude')
       setEnabled({
         claude: config.agents?.['claude']?.enabled !== false,
@@ -151,6 +161,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       mcps.length > 0 ||
       checkedSkills.length > 0 ||
       customInstructions.trim() !== '' ||
+      language !== DEFAULT_LANGUAGE ||
       defaultAgent !== 'claude' ||
       !enabled.claude ||
       !enabled.codex
@@ -159,6 +170,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       name: name.trim(),
       defaultAgent,
       instructions: customInstructions.trim() || undefined,
+      language: language === DEFAULT_LANGUAGE ? undefined : language,
       skills: checkedSkills.length ? checkedSkills : undefined,
       mcpServers: mcps.length ? Object.fromEntries(mcps.map((m) => [m.name, m.server])) : undefined,
       agents: Object.fromEntries(
@@ -247,6 +259,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
             />
           )}
           {step === 'permissoes' && <PermissionStep value={permission} onChange={setPermission} />}
+          {step === 'idioma' && <LanguageStep value={language} onChange={setLanguage} />}
           {step === 'mcps' && (
             <McpStep mcps={mcps} setMcps={setMcps} cwd={inspection?.path ?? null} />
           )}
@@ -267,6 +280,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
               enabled={enabled}
               customInstructions={customInstructions}
               permission={permission}
+              language={language}
               mcps={mcps}
               skills={skills.filter((s) => s.checked).map((s) => s.path)}
               openChat={openChat}
@@ -796,6 +810,66 @@ function PermissionStep({
   )
 }
 
+function LanguageStep({
+  value,
+  onChange,
+}: {
+  value: ResponseLanguage
+  onChange: (value: ResponseLanguage) => void
+}) {
+  return (
+    <div className="max-w-xl space-y-3">
+      <div>
+        <h3 className="text-sm font-medium">Em que idioma os agentes devem responder?</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Vai como instrução de sistema para todos os agentes do projeto, então vale em toda
+          resposta, mesmo com código, arquivos e ferramentas em inglês.
+        </p>
+      </div>
+      {LANGUAGE_OPTIONS.map((option) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
+              selected ? 'border-foreground/40 bg-accent' : 'hover:bg-accent/50',
+            )}
+          >
+            <Languages className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">
+                {option.label}
+                {option.value === DEFAULT_LANGUAGE && (
+                  <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                    recomendado
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {option.description}
+              </span>
+            </span>
+            <span
+              className={cn(
+                'flex size-4 shrink-0 items-center justify-center rounded-full border',
+                selected && 'border-foreground bg-foreground text-background',
+              )}
+            >
+              {selected && <Check className="size-3" />}
+            </span>
+          </button>
+        )
+      })}
+      <p className="text-[11px] text-muted-foreground">
+        Dá para mudar depois nas configurações do projeto.
+      </p>
+    </div>
+  )
+}
+
 function ReviewStep({
   inspection,
   name,
@@ -804,6 +878,7 @@ function ReviewStep({
   enabled,
   customInstructions,
   permission,
+  language,
   mcps,
   skills,
   openChat,
@@ -816,6 +891,7 @@ function ReviewStep({
   enabled: Record<AgentId, boolean>
   customInstructions: string
   permission: PermissionDefault
+  language: ResponseLanguage
   mcps: ChosenMcp[]
   skills: string[]
   openChat: boolean
@@ -858,6 +934,12 @@ function ReviewStep({
                 <ShieldCheck className="size-3.5" /> Pedir autorização antes de agir
               </>
             )}
+          </span>
+        </div>
+        <div className={row}>
+          <span className={key}>Idioma</span>
+          <span className="flex items-center gap-1.5">
+            <Languages className="size-3.5" /> {languageLabel(language)}
           </span>
         </div>
         <div className={row}>

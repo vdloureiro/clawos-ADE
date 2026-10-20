@@ -38,6 +38,14 @@ const secretRef = (name: string) => `\${secret:${name}}`
  * MCP remoto com login OAuth: o `mcp-remote` abre o navegador na primeira conexão e
  * guarda o acesso em ~/.mcp-auth (fora do projeto e do Clawos). Funciona em qualquer agente.
  */
+/** Porta do retorno do login do Google Drive (mcp-remote) e o URI a cadastrar no Google. */
+export const GOOGLE_DRIVE_PORT = 3340
+export const GOOGLE_DRIVE_REDIRECT = `http://localhost:${GOOGLE_DRIVE_PORT}/oauth/callback`
+const GOOGLE_DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/drive.file',
+].join(' ')
+
 export const META_ADS_URL = 'https://mcp.facebook.com/ads'
 
 /**
@@ -85,6 +93,59 @@ const EXTRA: CatalogEntry[] = [
             headers: { Authorization: `Bearer ${secretRef('meta_ads_token')}` },
           }
         : { type: 'http', url: META_ADS_URL },
+  },
+  {
+    id: 'google-drive',
+    name: 'Google Drive',
+    auth: 'oauth',
+    description:
+      'Buscar, ler e criar arquivos do seu Google Drive (servidor oficial do Google). Login com a sua conta Google.',
+    docsUrl: 'https://developers.google.com/workspace/drive/api/guides/configure-mcp-server',
+    fields: [
+      {
+        key: 'clientId',
+        label: 'Client ID do Google',
+        placeholder: '1234…apps.googleusercontent.com',
+        secret: true,
+        help: `O Google não libera login automático para apps de terceiros: é preciso um Client ID do seu projeto no Google Cloud (uma vez só). No Google Cloud: 1) ative as APIs "Google Drive API" e "Google Drive MCP API"; 2) em Google Auth Platform, configure a tela de consentimento (público Interno, ou Externo com você como usuário de teste) e adicione os escopos drive.readonly e drive.file; 3) crie um ID do cliente OAuth do tipo "Aplicativo da Web" com o URI de redirecionamento ${GOOGLE_DRIVE_REDIRECT}. O servidor do Drive ainda está em prévia: a conta precisa estar no Google Workspace Developer Preview Program.`,
+      },
+      {
+        key: 'clientSecret',
+        label: 'Client Secret',
+        placeholder: 'GOCSPX-…',
+        secret: true,
+        help: 'Aparece junto do Client ID ao criar o cliente OAuth.',
+      },
+    ],
+    secretName: (field) =>
+      field === 'clientId' ? 'google_drive_client_id' : 'google_drive_client_secret',
+    build: (values) => {
+      const id = values['clientId']?.trim() ?? ''
+      if (id && !id.endsWith('.apps.googleusercontent.com'))
+        throw new Error('O Client ID do Google termina em .apps.googleusercontent.com.')
+      return {
+        command: 'npx',
+        args: [
+          '-y',
+          'mcp-remote@latest',
+          'https://drivemcp.googleapis.com/mcp/v1',
+          // Porta fixa: o URI de redirecionamento cadastrado no Google precisa bater.
+          String(GOOGLE_DRIVE_PORT),
+          '--static-oauth-client-info',
+          JSON.stringify({
+            client_id: secretRef('google_drive_client_id'),
+            client_secret: secretRef('google_drive_client_secret'),
+          }),
+          '--static-oauth-client-metadata',
+          JSON.stringify({ scope: GOOGLE_DRIVE_SCOPES }),
+          // O Google só entrega o token de renovação com estes dois (sem eles, o login expira).
+          '--authorize-param',
+          'access_type=offline',
+          '--authorize-param',
+          'prompt=consent',
+        ],
+      }
+    },
   },
   {
     id: 'railway',
@@ -342,6 +403,7 @@ const ORDER = [
   'supabase',
   'vercel',
   'railway',
+  'google-drive',
   'meta-ads',
   'clickup',
   'linear',

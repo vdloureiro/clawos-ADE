@@ -7,6 +7,7 @@ import {
   type McpServerConfig,
   type ProjectConfig,
 } from '@shared/project'
+import { languageInstruction } from '@shared/language'
 import type { AgentId } from '@shared/types'
 import type { GlobalMcp } from '../agents/registry'
 
@@ -135,7 +136,7 @@ function compileClaude(ctx: CompileContext): CompiledSession {
 
   // CLAUDE.md na raiz já é lido nativamente; outro arquivo de instruções vira append.
   const instructions = customInstructions(ctx, 'CLAUDE.md')
-  if (instructions) result.meta['systemPrompt'] = { append: instructions.text }
+  result.meta['systemPrompt'] = { append: systemAppend(ctx, instructions?.text) }
 
   return result
 }
@@ -170,7 +171,7 @@ function compileCodex(ctx: CompileContext): CompiledSession {
 
   // AGENTS.md é nativo; outro arquivo de instruções vira developer_instructions.
   const instructions = customInstructions(ctx, 'AGENTS.md')
-  if (instructions) config['developer_instructions'] = instructions.text
+  config['developer_instructions'] = systemAppend(ctx, instructions?.text)
 
   // Skills fora de .agents/skills do projeto: o adaptador lê <dir extra>/.agents/skills.
   const extra = resolveSkills(ctx).filter(
@@ -321,6 +322,11 @@ function customInstructions(
   const text = ctx.readText(path)
   if (text === null) throw new Error(`Arquivo de instruções não encontrado: ${path}`)
   return { path, text }
+}
+
+/** Instruções extras do projeto + o idioma das respostas (sempre presente). */
+function systemAppend(ctx: CompileContext, instructions: string | undefined): string {
+  return [instructions, languageInstruction(ctx.config.language)].filter(Boolean).join('\n\n')
 }
 
 interface SkillLink {

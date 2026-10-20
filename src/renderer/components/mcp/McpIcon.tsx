@@ -3,6 +3,7 @@ import {
   siCloudflare,
   siClickup,
   siGithub,
+  siGoogledrive,
   siMeta,
   siLinear,
   siNotion,
@@ -28,6 +29,7 @@ const HIGGSFIELD = {
 
 const BRANDS: Record<string, { path: string; title: string; viewBox?: string }> = {
   github: siGithub,
+  'google-drive': siGoogledrive,
   'meta-ads': siMeta,
   clickup: siClickup,
   railway: siRailway,

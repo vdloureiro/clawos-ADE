@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { AGENT_IDS } from './agents'
+import { RESPONSE_LANGUAGES } from './language'
 
 /**
  * Schema de `<projeto>/.clawos/project.yaml` — fonte única de verdade da configuração
@@ -36,6 +37,8 @@ export const projectConfigSchema = z.object({
   name: z.string().optional(),
   defaultAgent: z.enum(AGENT_IDS).optional(),
   instructions: z.string().optional(),
+  /** Idioma das respostas dos agentes (padrão: pt-BR). */
+  language: z.enum(RESPONSE_LANGUAGES).optional(),
   skills: z.array(z.string()).optional(),
   mcpServers: z
     .record(z.string().regex(/^[\w-]+$/, 'use letras, números, - ou _'), mcpServerSchema)
