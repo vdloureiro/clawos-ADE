@@ -77,6 +77,7 @@ export function buildMenu(): void {
         item('Busca rápida', 'CmdOrCtrl+K', 'palette'),
         item('Parar agente do painel ativo', 'CmdOrCtrl+.', 'stop-agent'),
         item('Alternar tema claro/escuro', 'CmdOrCtrl+Shift+L', 'toggle-theme'),
+        item('Terminal', 'Ctrl+`', 'toggle-terminal'),
         { type: 'separator' },
         ...Array.from({ length: 9 }, (_, i) =>
           item(`Projeto ${i + 1}`, `CmdOrCtrl+${i + 1}`, `project-${i + 1}`),

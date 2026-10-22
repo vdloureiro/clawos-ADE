@@ -295,6 +295,16 @@ export type TaskStatus = 'todo' | 'doing' | 'done'
 /** 1 = mais alta (P1) … 4 = sem prioridade (P4), como no Todoist. */
 export type TaskPriority = 1 | 2 | 3 | 4
 
+/** Mensagem fixada numa conversa. */
+export interface PinnedMessage {
+  id: string
+  sessionId: string
+  /** Índice do item no histórico da conversa. */
+  itemIndex: number
+  text: string
+  createdAt: number
+}
+
 export interface Task {
   id: string
   projectId: string

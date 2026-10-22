@@ -12,6 +12,7 @@ import type {
   MergeResult,
   FolderInspection,
   NewProjectInput,
+  PinnedMessage,
   PermissionDefault,
   ProjectFolder,
   RemoteStatus,
@@ -58,6 +59,7 @@ export type AppCommand =
   | 'settings'
   | 'project-settings'
   | 'toggle-theme'
+  | 'toggle-terminal'
   | `project-${number}`
 
 /** Canais request/response (renderer → main). */
@@ -197,6 +199,12 @@ export interface InvokeChannels {
     result: void
   }
   'session:rename': { args: [sessionId: string, title: string]; result: void }
+  /** Mensagens fixadas da conversa (a mais recente primeiro). */
+  'pins:list': { args: [sessionId: string]; result: PinnedMessage[] }
+  'pins:add': { args: [sessionId: string, itemIndex: number, text: string]; result: PinnedMessage }
+  'pins:remove': { args: [id: string]; result: void }
+  /** Abre um shell (o terminal integrado) na pasta do projeto. Retorna o id do terminal. */
+  'terminal:open': { args: [projectId: string, cols: number, rows: number]; result: string }
   'session:stop': { args: [sessionId: string]; result: void }
   'session:restart': { args: [sessionId: string]; result: ChatState }
   'session:delete': { args: [sessionId: string]; result: void }

@@ -2,6 +2,7 @@ import { useActiveProject, useProjectsStore } from '@/stores/projects'
 import { TasksView } from '@/components/tasks/TasksView'
 import { useUiStore } from '@/stores/ui'
 import { DockWorkspace } from './DockWorkspace'
+import { TerminalDrawer } from './TerminalDrawer'
 import { Onboarding } from './Onboarding'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 
@@ -49,6 +50,10 @@ export function Workspace() {
         )}
         {!project && !showingTasks && <Onboarding />}
       </div>
+      {/* Terminais de cada projeto ficam montados (rodando) mesmo escondidos. */}
+      {mounted.map((id) => (
+        <TerminalDrawer key={id} projectId={id} visible={!showingTasks && id === project?.id} />
+      ))}
     </div>
   )
 }

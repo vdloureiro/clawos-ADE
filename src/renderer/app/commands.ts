@@ -37,6 +37,9 @@ export function runCommand(command: AppCommand): void {
     case 'toggle-theme':
       useThemeStore.getState().toggle()
       return
+    case 'toggle-terminal':
+      if (projectId) ui.toggleTerminal(projectId)
+      return
     default: {
       const index = Number(command.replace('project-', '')) - 1
       const project = projects.projects[index]
@@ -55,6 +58,7 @@ export const SHORTCUTS: [string, string][] = [
   ['⌘,', 'Configurações'],
   ['⌘⇧,', 'Configurações do projeto'],
   ['⌘⇧L', 'Alternar tema claro/escuro'],
+  ['⌃`', 'Abrir/fechar o terminal do projeto'],
   ['Enter / ⇧Enter', 'Enviar / quebrar linha no chat'],
   ['@', 'Mencionar arquivo do projeto'],
 ]

@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Folder, GitBranch, Loader2, RotateCcw, Square } from 'lucide-react'
 import { AGENT_META } from '@shared/agents'
-import type { SessionStatus } from '@shared/types'
+import type { PinnedMessage, SessionStatus } from '@shared/types'
 import { AgentIcon } from '@/components/agents/AgentIcon'
 import { FileLink, FileLinkProvider } from '@/components/files/FileLinks'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,9 @@ import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/stores/sessions'
 import { useUiStore } from '@/stores/ui'
 import { ChatInput, type SendPayload } from './ChatInput'
+import { organizeTasksPrompt, turnEnds } from '@/lib/chatTurns'
 import { Markdown } from './Markdown'
+import { MessageActions, PinnedBanner } from './MessageActions'
 import { PermissionCard } from './PermissionCard'
 import { PlanView } from './PlanView'
 import { ThoughtBlock } from './ThoughtBlock'
@@ -54,11 +56,26 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     stickToBottom.current = true
   }, [sessionId])
 
+  // Mensagens fixadas desta conversa.
+  const [pins, setPins] = useState<PinnedMessage[]>([])
+  useEffect(() => {
+    let alive = true
+    void window.clawos.invoke('pins:list', sessionId).then((list) => alive && setPins(list))
+    return () => {
+      alive = false
+    }
+  }, [sessionId])
+
+  const items = chat?.items
+  const busy = chat?.status === 'working' || chat?.status === 'awaiting_permission'
+  const ends = useMemo(() => turnEnds(items ?? [], busy), [items, busy])
+
   if (!chat) return null
 
-  const { status, items, info } = chat
-  const working = status === 'working' || status === 'awaiting_permission'
-  const last = items.at(-1)
+  const { status, info } = chat
+  const working = busy
+  const allItems = chat.items
+  const last = allItems.at(-1)
   const showThinking =
     status === 'working' && last?.kind !== 'assistant' && last?.kind !== 'thought'
 
@@ -67,6 +84,29 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     void window.clawos.invoke('session:prompt', sessionId, text, attachments)
   }
   const stop = () => void window.clawos.invoke('session:cancel', sessionId)
+
+  const togglePin = async (index: number, text: string) => {
+    const existing = pins.find((p) => p.itemIndex === index)
+    if (existing) {
+      await window.clawos.invoke('pins:remove', existing.id)
+      setPins((list) => list.filter((p) => p.id !== existing.id))
+    } else {
+      const pin = await window.clawos.invoke('pins:add', sessionId, index, text)
+      setPins((list) => [pin, ...list])
+    }
+  }
+  const unpin = async (pin: PinnedMessage) => {
+    await window.clawos.invoke('pins:remove', pin.id)
+    setPins((list) => list.filter((p) => p.id !== pin.id))
+  }
+  const jumpTo = (pin: PinnedMessage) => {
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-item="${pin.itemIndex}"]`)
+    if (!el) return
+    stickToBottom.current = false
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('clawos-flash')
+    setTimeout(() => el.classList.remove('clawos-flash'), 1600)
+  }
   const respond = (requestId: string, optionId: string | null) =>
     void window.clawos.invoke('session:permission', sessionId, requestId, optionId)
 
@@ -128,24 +168,46 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         </header>
         {summary?.mode === 'worktree' && <WorktreeBar summary={summary} busy={working} />}
 
+        <PinnedBanner pins={pins} onJump={jumpTo} onUnpin={(pin) => void unpin(pin)} />
         <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
-            {status === 'starting' && items.length === 0 && (
+            {status === 'starting' && allItems.length === 0 && (
               <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Iniciando sessão com o{' '}
                 {AGENT_META[info.agentId].name}…
               </div>
             )}
-            {items.map((item, index) => (
-              <ChatItemView
-                key={`${item.kind}-${item.id}`}
-                item={item}
-                isLast={index === items.length - 1}
-                working={working}
-                cwd={info.cwd}
-                onRespond={respond}
-              />
-            ))}
+            {allItems.map((item, index) => {
+              const end = ends.get(index)
+              return (
+                <div
+                  key={`${item.kind}-${item.id}-${index}`}
+                  data-item={index}
+                  className="rounded-md"
+                >
+                  <ChatItemView
+                    item={item}
+                    isLast={index === allItems.length - 1}
+                    working={working}
+                    cwd={info.cwd}
+                    onRespond={respond}
+                  />
+                  {end && (
+                    <div className="mt-1.5">
+                      <MessageActions
+                        text={end.text}
+                        pinned={pins.some((p) => p.itemIndex === index)}
+                        canOrganize={!working && status === 'ready'}
+                        onTogglePin={() => void togglePin(index, end.text)}
+                        onOrganize={() =>
+                          send({ text: organizeTasksPrompt(end.text), attachments: [] })
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {(status === 'error' || status === 'closed') && (
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={() => void restart(sessionId)}>

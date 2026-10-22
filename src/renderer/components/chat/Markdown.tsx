@@ -2,13 +2,17 @@ import { memo } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { FileLink, InlineCode } from '@/components/files/FileLinks'
+import { TASKS_BLOCK } from '@/lib/chatTurns'
 import { CodeBlock } from './CodeBlock'
+import { TaskProposal } from './TaskProposal'
 
 const components: Components = {
   pre: ({ children }) => <>{children}</>,
   code: ({ className, children }) => {
     const text = String(children ?? '')
     const lang = /language-([\w+-]+)/.exec(className ?? '')?.[1]
+    // Tarefas propostas pelo agente (botão "Organizar em tarefas") viram um cartão.
+    if (lang === TASKS_BLOCK) return <TaskProposal code={text.trim()} />
     // Blocos cercados têm classe de linguagem ou quebras de linha; o resto é código inline.
     if (lang || text.includes('\n')) return <CodeBlock code={text.replace(/\n$/, '')} lang={lang} />
     // Caminho de arquivo existente vira link para a aba do arquivo.

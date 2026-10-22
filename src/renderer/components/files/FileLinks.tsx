@@ -26,6 +26,11 @@ export function FileLinkProvider({
   return <FileLinkContext.Provider value={value}>{children}</FileLinkContext.Provider>
 }
 
+/** Projeto e pasta da conversa onde o componente está (null fora do chat). */
+export function useChatContext(): FileLinkContextValue | null {
+  return useContext(FileLinkContext)
+}
+
 const cache = new Map<string, Promise<string | null>>()
 
 function resolveFile(path: string, cwd: string): Promise<string | null> {

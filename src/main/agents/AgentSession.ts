@@ -1,7 +1,8 @@
+import { readFileRetrying } from '../fs/readRetry'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { readFileSync, statSync } from 'node:fs'
+import { statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Readable, Writable } from 'node:stream'
@@ -191,7 +192,7 @@ export class AgentSession {
     if (mimeType && this.acceptsImages) {
       try {
         if (statSync(path).size <= MAX_IMAGE_BYTES)
-          return { type: 'image', mimeType, data: readFileSync(path).toString('base64') }
+          return { type: 'image', mimeType, data: readFileRetrying(path).toString('base64') }
       } catch {
         // Arquivo sumiu: manda o link e o agente reporta.
       }

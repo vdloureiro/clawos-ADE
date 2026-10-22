@@ -1,5 +1,5 @@
+import { readFileRetrying } from '../fs/readRetry'
 import { randomUUID } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { applyEvent, createChatState, type ChatState } from '@shared/chat'
 import type {
@@ -307,7 +307,7 @@ export class SessionManager {
         this.deps.secrets.get(project.id, name) ?? this.deps.sharedMcps.secret(name),
       readText: (path) => {
         try {
-          return readFileSync(path, 'utf8')
+          return readFileRetrying(path, 'utf8')
         } catch {
           return null
         }

@@ -21,6 +21,9 @@ interface UiState {
   openProjectSettings: (projectId: string | null) => void
   setGlobalSettingsOpen: (open: boolean) => void
   setNewProjectOpen: (open: boolean) => void
+  /** Terminal integrado aberto, por projeto (como o painel de terminal do VS Code). */
+  terminalOpen: Record<string, boolean>
+  toggleTerminal: (projectId: string, open?: boolean) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -38,4 +41,9 @@ export const useUiStore = create<UiState>((set) => ({
   openProjectSettings: (settingsProjectId) => set({ settingsProjectId }),
   setGlobalSettingsOpen: (globalSettingsOpen) => set({ globalSettingsOpen }),
   setNewProjectOpen: (newProjectOpen) => set({ newProjectOpen }),
+  terminalOpen: {},
+  toggleTerminal: (projectId, open) =>
+    set((s) => ({
+      terminalOpen: { ...s.terminalOpen, [projectId]: open ?? !s.terminalOpen[projectId] },
+    })),
 }))

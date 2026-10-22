@@ -1,8 +1,8 @@
+import { readFileRetrying } from '../fs/readRetry'
 import {
   closeSync,
   openSync,
   readdirSync,
-  readFileSync,
   readSync,
   renameSync,
   statSync,
@@ -69,7 +69,7 @@ export function readForViewer(path: string): FileContent {
     return {
       ...base,
       kind: 'image',
-      dataUrl: `data:${mime};base64,${readFileSync(path).toString('base64')}`,
+      dataUrl: `data:${mime};base64,${readFileRetrying(path).toString('base64')}`,
     }
   }
   if (stat.size > MAX_TEXT_BYTES) return { ...base, kind: 'too_large' }
@@ -82,7 +82,7 @@ export function readForViewer(path: string): FileContent {
     closeSync(fd)
   }
   if (looksBinary(head)) return { ...base, kind: 'binary' }
-  return { ...base, kind: 'text', text: readFileSync(path, 'utf8') }
+  return { ...base, kind: 'text', text: readFileRetrying(path, 'utf8') }
 }
 
 export type WriteResult = { ok: true; mtime: number } | { ok: false; conflict: true; mtime: number }

@@ -1,5 +1,6 @@
+import { readFileRetrying } from '../fs/readRetry'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import type Database from 'better-sqlite3'
 import { parse, stringify } from 'yaml'
@@ -312,7 +313,7 @@ export class ProjectManager {
     const file = join(projectPath, CONFIG_DIR, CONFIG_FILE)
     if (!existsSync(file)) return { config: {}, error: null, exists: false }
     try {
-      const raw: unknown = parse(readFileSync(file, 'utf8')) ?? {}
+      const raw: unknown = parse(readFileRetrying(file, 'utf8')) ?? {}
       const parsed = projectConfigSchema.safeParse(raw)
       if (!parsed.success) {
         const issues = parsed.error.issues.map(

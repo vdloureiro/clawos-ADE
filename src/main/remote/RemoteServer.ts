@@ -21,6 +21,8 @@ export const BLOCKED_REMOTE = new Set([
   'shell:showItem',
   'clipboard:filePaths',
   'media:microphone',
+  // Shell do computador: só no app desktop, nunca por um aparelho remoto.
+  'terminal:open',
 ])
 
 export function isBlockedRemote(channel: string): boolean {

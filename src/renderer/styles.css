@@ -213,3 +213,16 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Destaque rápido ao pular para uma mensagem fixada. */
+@keyframes clawos-flash {
+  from {
+    background-color: color-mix(in oklab, var(--color-amber-500) 22%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.clawos-flash {
+  animation: clawos-flash 1.6s ease-out;
+}

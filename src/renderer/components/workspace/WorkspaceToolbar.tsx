@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { LayoutGrid, Plus, Save, Trash2 } from 'lucide-react'
+import { LayoutGrid, Plus, Save, SquareTerminal, Trash2 } from 'lucide-react'
 import type { LayoutPreset, Project } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/lib/dock'
 import { AgentIcon } from '@/components/agents/AgentIcon'
 import { useAgentsStore } from '@/stores/agents'
+import { useUiStore } from '@/stores/ui'
 
 /** Botão com menu suspenso que fecha ao clicar fora. */
 function Popover({
@@ -46,6 +47,8 @@ const item =
 /** Barra do workspace: projeto atual, "+ Agente" e layouts. */
 export function WorkspaceToolbar({ project }: { project: Project }) {
   const agents = useAgentsStore((s) => s.statuses)
+  const terminalOpen = useUiStore((s) => s.terminalOpen[project.id] ?? false)
+  const toggleTerminal = useUiStore((s) => s.toggleTerminal)
   const [presets, setPresets] = useState<LayoutPreset[]>([])
   const [mode, setMode] = useState<'shared' | 'worktree'>('shared')
   const [disabled, setDisabled] = useState<string[]>([])
@@ -72,6 +75,14 @@ export function WorkspaceToolbar({ project }: { project: Project }) {
 
   return (
     <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
+      <Button
+        variant={terminalOpen ? 'secondary' : 'ghost'}
+        size="sm"
+        title="Terminal na pasta do projeto (⌃`)"
+        onClick={() => toggleTerminal(project.id)}
+      >
+        <SquareTerminal /> Terminal
+      </Button>
       <Popover
         trigger={(toggle) => (
           <Button

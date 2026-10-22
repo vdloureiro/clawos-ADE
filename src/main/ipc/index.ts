@@ -146,7 +146,7 @@ function saveAttachment(name: string, data: Uint8Array): string {
 }
 
 export function registerIpcHandlers(): void {
-  const { projects, secrets, sessions, layouts, tasks, sharedMcps } = getServices()
+  const { projects, secrets, sessions, layouts, tasks, sharedMcps, pins } = getServices()
 
   handle('app:info', () => ({
     name: app.getName(),
@@ -357,6 +357,9 @@ export function registerIpcHandlers(): void {
     sessions.respondPermission(id, requestId, optionId),
   )
   handle('session:rename', (id, title) => sessions.rename(id, title))
+  handle('pins:list', (sessionId) => pins.list(sessionId))
+  handle('pins:add', (sessionId, itemIndex, text) => pins.add(sessionId, itemIndex, text))
+  handle('pins:remove', (id) => pins.remove(id))
   handle('session:stop', (id) => sessions.stop(id))
   handle('session:restart', (id) => sessions.restart(id))
   handle('session:delete', (id) => sessions.delete(id))
@@ -416,6 +419,15 @@ export function registerIpcHandlers(): void {
   })
 
   // Terminais ---------------------------------------------------------------
+  // Terminal integrado: o shell do usuário (com o PATH dele) na pasta do projeto.
+  handle('terminal:open', async (projectId, cols, rows) => {
+    const project = projects.get(projectId)
+    if (!project) throw new Error('Projeto não encontrado.')
+    if (process.platform === 'win32')
+      return openTerminal('powershell.exe', [], cols, rows, project.path)
+    const shell = (await getShellEnv())['SHELL'] || process.env['SHELL'] || '/bin/zsh'
+    return openTerminal(shell, ['-l'], cols, rows, project.path, { TERM_PROGRAM: 'Clawos' })
+  })
   handle('terminal:input', (id, data) => writeTerminal(id, data))
   handle('terminal:resize', (id, cols, rows) => resizeTerminal(id, cols, rows))
   handle('terminal:kill', (id) => killTerminal(id))

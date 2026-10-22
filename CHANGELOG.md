@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+
+- **Terminal integrado**: botão "Terminal" na barra do projeto (ou ⌃\`) abre um terminal na pasta do projeto, embaixo dos painéis, como no VS Code. Várias abas, altura ajustável arrastando a borda, e os terminais continuam rodando quando o painel é escondido.
+- **Copiar e fixar respostas**: no fim de cada resposta do agente, "Copiar" copia a resposta inteira (em Markdown) e "Fixar" prende a mensagem no topo da conversa, como no Instagram. Clicar na faixa leva até a mensagem; dá para fixar várias e navegar entre elas.
+- **Organizar em tarefas**: o botão no fim da resposta pede ao agente para transformar as atividades em tarefas. Elas aparecem num cartão (com prioridade e detalhes) para você desmarcar o que não quiser e adicionar ao quadro do projeto com um clique.
+- **"Erro ao ler project.yaml: EINTR"**: em projetos numa pasta sincronizada com o iCloud, a leitura de arquivos que estavam só na nuvem era interrompida. O Clawos agora tenta de novo nesses casos (project.yaml, instruções, arquivos abertos e anexos).
+
 ## 0.6.0
 
 - **Idioma das respostas**: nova etapa "Idioma" no assistente de novo projeto (e o mesmo campo nas configurações do projeto): Português (Brasil), English, Español ou "Mesmo idioma da pergunta". A escolha vai como instrução de sistema para o Claude e o Codex, então vale em toda resposta, mesmo com código, arquivos, logs e ferramentas em inglês. Projetos sem escolha respondem em português.

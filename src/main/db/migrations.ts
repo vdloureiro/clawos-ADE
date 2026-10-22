@@ -139,4 +139,16 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (project_id, name)
   );
   `,
+  /* 8 */ `
+  -- Mensagens fixadas numa conversa (como no Instagram). A posição é o índice do item no
+  -- histórico (reconstruído sempre na mesma ordem); o texto fica salvo para o destaque.
+  CREATE TABLE pinned_messages (
+    id         TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    item_index INTEGER NOT NULL,
+    text       TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE (session_id, item_index)
+  );
+  `,
 ]

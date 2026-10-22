@@ -11,6 +11,7 @@ import { ProjectManager } from './projects/ProjectManager'
 import { SharedMcpStore } from './mcp/SharedMcpStore'
 import { SecretStore } from './secrets/SecretStore'
 import { SessionManager } from './sessions/SessionManager'
+import { PinRepo } from './sessions/PinRepo'
 import { SessionRepo } from './sessions/SessionRepo'
 import { TaskRepo } from './tasks/TaskRepo'
 import { WorktreeManager } from './worktrees/WorktreeManager'
@@ -23,6 +24,7 @@ export interface Services {
   layouts: LayoutRepo
   tasks: TaskRepo
   sharedMcps: SharedMcpStore
+  pins: PinRepo
 }
 
 /** Evento para todas as interfaces (janelas e aparelhos do acesso remoto). */
@@ -86,6 +88,7 @@ export function initServices(): Services {
     layouts: new LayoutRepo(db),
     tasks: new TaskRepo(db),
     sharedMcps,
+    pins: new PinRepo(db),
   }
   return services
 }
