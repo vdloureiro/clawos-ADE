@@ -51,7 +51,7 @@ interface FileParams {
 }
 
 function makeFileDockPanel(projectId: string) {
-  return function FileDockPanel({ params }: IDockviewPanelProps<FileParams>) {
+  return function FileDockPanel({ api, params }: IDockviewPanelProps<FileParams>) {
     return (
       <ErrorBoundary label="Não foi possível mostrar este arquivo.">
         <FilePanel
@@ -59,6 +59,7 @@ function makeFileDockPanel(projectId: string) {
           line={params.line}
           nonce={params.nonce}
           projectId={projectId}
+          onClose={() => api.close()}
         />
       </ErrorBoundary>
     )
@@ -78,7 +79,8 @@ function FileTab({ api, params }: IDockviewPanelHeaderProps<FileParams>) {
         type="button"
         className={cn(
           'ml-1 rounded p-0.5 hover:bg-accent',
-          dirty ? 'text-amber-500' : 'opacity-0 group-hover:opacity-70 hover:opacity-100',
+          // Sempre visível: arquivos abertos ao lado precisam de um jeito óbvio de fechar.
+          dirty ? 'text-amber-500' : 'opacity-60 hover:opacity-100',
         )}
         title={dirty ? 'Alterações não salvas — fechar' : 'Fechar'}
         onClick={(e) => {
@@ -158,8 +160,30 @@ function makeWatermark(projectId: string) {
 function makeGroupActions(projectId: string) {
   return function GroupActions({ api, group }: IDockviewHeaderActionsProps) {
     const maximized = api.isMaximized()
+    const files = group.panels.filter((p) => isFilePanel(p.id))
     return (
       <div className="flex h-full items-center gap-0.5 px-1">
+        {files.length > 0 && (
+          <button
+            type="button"
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={files.length > 1 ? 'Fechar todos os arquivos deste grupo' : 'Fechar arquivo'}
+            onClick={() => {
+              const dirty = useDirtyFiles.getState().dirty
+              const unsaved = files.filter((p) => dirty[(p.params as FileParams).path])
+              if (
+                unsaved.length > 0 &&
+                !confirm(
+                  `Há ${unsaved.length} arquivo(s) com alterações não salvas. Fechar mesmo assim?`,
+                )
+              )
+                return
+              for (const panel of files) panel.api.close()
+            }}
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
         <button
           type="button"
           className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"

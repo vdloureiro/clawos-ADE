@@ -11,6 +11,7 @@ import {
   Save,
   SquareArrowOutUpRight,
   TriangleAlert,
+  X,
 } from 'lucide-react'
 import type { FileContent } from '@shared/types'
 import { Markdown } from '@/components/chat/Markdown'
@@ -45,11 +46,14 @@ export function FilePanel({
   line,
   nonce,
   projectId,
+  onClose,
 }: {
   path: string
   line?: number
   nonce?: number
   projectId: string
+  /** Fecha a aba (pergunta antes se houver alterações não salvas). */
+  onClose?: () => void
 }) {
   const [file, setFile] = useState<FileContent | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -218,6 +222,18 @@ export function FilePanel({
                 <FolderOpen className="size-3.5" />
               </ToolButton>
             </>
+          )}
+          {onClose && (
+            <ToolButton
+              title="Fechar arquivo (⌘W)"
+              onClick={() => {
+                if (dirty && !confirm(`Descartar as alterações não salvas em ${fileName(path)}?`))
+                  return
+                onClose()
+              }}
+            >
+              <X className="size-3.5" />
+            </ToolButton>
           )}
         </div>
       </header>

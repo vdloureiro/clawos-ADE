@@ -305,7 +305,7 @@ export function ChatInput({
           onBlur={() => setMention(null)}
           placeholder={
             unavailable
-              ? 'Sessão indisponível — veja o erro acima'
+              ? 'A sessão caiu — mande uma mensagem para religar o agente'
               : disabled
                 ? 'Conectando ao agente…'
                 : 'Peça algo ao agente…'

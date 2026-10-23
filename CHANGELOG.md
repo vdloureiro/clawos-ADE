@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- **"spawn … ENOENT / ACP connection closed" depois de reiniciar o computador**: logo após o login, pastas na Mesa sincronizada com o iCloud podem demorar alguns segundos para ficar disponíveis, e as conversas reabertas falhavam. Agora o Clawos espera a pasta (até 30 s) antes de iniciar o agente; se a pasta realmente não existir, a mensagem diz qual é ("A pasta desta conversa não foi encontrada: …").
+- **Conversa que caiu religa sozinha**: numa conversa com erro ou encerrada, dá para escrever normalmente: ao enviar, o Clawos religa o agente e manda a mensagem (sem precisar clicar em "Reiniciar sessão").
+- **Fechar arquivos abertos ao lado**: o X da aba do arquivo agora fica sempre visível, o cabeçalho do arquivo ganhou o botão Fechar, o grupo de arquivos tem um X para fechar todos de uma vez, e ⌘W fecha a aba de arquivo ativa (perguntando antes se houver alterações não salvas).
+
 ## 0.7.0
 
 - **Terminal integrado**: botão "Terminal" na barra do projeto (ou ⌃\`) abre um terminal na pasta do projeto, embaixo dos painéis, como no VS Code. Várias abas, altura ajustável arrastando a borda, e os terminais continuam rodando quando o painel é escondido.

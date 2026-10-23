@@ -2,7 +2,8 @@ import { readFileRetrying } from '../fs/readRetry'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { statSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Readable, Writable } from 'node:stream'
@@ -267,6 +268,7 @@ export class AgentSession {
   }
 
   private async spawnAgent(): Promise<acp.ClientConnection> {
+    await waitForFolder(this.cwd)
     const agent = getAgent(this.agentId)
     const cliPath = await resolveCli(this.agentId)
     const shellEnv = await getShellEnv()
@@ -305,7 +307,14 @@ export class AgentSession {
         if (this.stderrTail.length > 30) this.stderrTail.shift()
       }
     })
-    child.on('error', (error) => this.fail(error))
+    child.on('error', (error) =>
+      // Sem a pasta, o Node culpa o executável ("spawn … ENOENT"); explica o real motivo.
+      this.fail(
+        (error as NodeJS.ErrnoException).code === 'ENOENT' && !existsSync(this.cwd)
+          ? folderMissing(this.cwd)
+          : error,
+      ),
+    )
     child.on('exit', (code, signal) => {
       this.process = null
       if (this.closing) return
@@ -404,4 +413,27 @@ export function describeError(error: unknown): string {
     if (message) return String(message)
   }
   return String(error)
+}
+
+function folderMissing(path: string): Error {
+  return new Error(
+    `A pasta desta conversa não foi encontrada: ${path}\nSe o projeto foi movido ou apagado, remova-o da barra lateral e adicione a pasta nova.`,
+  )
+}
+
+/**
+ * Logo após ligar o computador, uma pasta na Mesa/Documentos sincronizada com o iCloud pode
+ * demorar alguns segundos para ficar disponível. Espera até 30 s antes de desistir.
+ */
+export async function waitForFolder(path: string, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    try {
+      if ((await stat(path)).isDirectory()) return
+    } catch {
+      // Ainda não disponível.
+    }
+    if (Date.now() >= deadline) throw folderMissing(path)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
 }

@@ -232,7 +232,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         </div>
 
         <ChatInput
-          disabled={status === 'starting' || status === 'error' || status === 'closed'}
+          // Com erro ou encerrada dá para escrever: enviar religa o agente.
+          disabled={status === 'starting'}
           unavailable={status === 'error' || status === 'closed'}
           working={working}
           cwd={info.cwd}

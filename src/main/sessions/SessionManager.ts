@@ -62,7 +62,7 @@ export class SessionManager {
   private readonly live = new Map<string, LiveSession>()
   private readonly edits = new EditTracker()
   /** Mensagens a enviar assim que a sessão ficar pronta (ex.: tarefa delegada). */
-  private readonly pendingPrompts = new Map<string, string>()
+  private readonly pendingPrompts = new Map<string, { text: string; attachments: string[] }>()
 
   constructor(private readonly deps: SessionManagerDeps) {}
 
@@ -91,7 +91,8 @@ export class SessionManager {
       title: options.title?.trim().slice(0, 80) || NEW_TITLE,
       worktree,
     })
-    if (options.initialPrompt) this.pendingPrompts.set(id, options.initialPrompt)
+    if (options.initialPrompt)
+      this.pendingPrompts.set(id, { text: options.initialPrompt, attachments: [] })
     this.deps.projects.touch(projectId)
     const { summary } = this.deps.repo.get(id)
     this.startAgent(summary, null, [])
@@ -111,6 +112,14 @@ export class SessionManager {
   }
 
   prompt(id: string, text: string, attachments: string[] = []): void {
+    // Conversa que caiu (erro ou encerrada): religa o agente e manda a mensagem quando
+    // ele estiver pronto, sem precisar clicar em "Reiniciar sessão".
+    const current = this.live.get(id)
+    if (!current || current.chat.status === 'error' || current.chat.status === 'closed') {
+      this.pendingPrompts.set(id, { text, attachments })
+      this.restart(id)
+      return
+    }
     const session = this.requireAgent(id)
     const live = this.live.get(id)!
     if (live.chat.info.title === NEW_TITLE) {
@@ -333,7 +342,7 @@ export class SessionManager {
       const pending = this.pendingPrompts.get(id)
       if (event.status === 'ready' && pending) {
         this.pendingPrompts.delete(id)
-        this.prompt(id, pending)
+        this.prompt(id, pending.text, pending.attachments)
       }
     }
     if (event.type === 'permission_request') {

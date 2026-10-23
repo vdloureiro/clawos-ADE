@@ -1,5 +1,5 @@
 import type { AppCommand } from '@shared/ipc'
-import { closeSessionPanel, newSessionInDock } from '@/lib/dock'
+import { closeActiveFilePanel, closeSessionPanel, newSessionInDock } from '@/lib/dock'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
 import { useThemeStore } from '@/stores/theme'
@@ -20,6 +20,7 @@ export function runCommand(command: AppCommand): void {
       void projects.add()
       return
     case 'close-panel':
+      if (projectId && closeActiveFilePanel(projectId)) return
       if (projectId && sessionId) void closeSessionPanel(projectId, sessionId)
       return
     case 'stop-agent':

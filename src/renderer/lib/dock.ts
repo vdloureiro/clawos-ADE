@@ -2,6 +2,7 @@ import type { DockviewApi } from 'dockview-react'
 import type { AgentId, SessionMode } from '@shared/types'
 import { useProjectsStore } from '@/stores/projects'
 import { useSessionsStore } from '@/stores/sessions'
+import { useDirtyFiles } from '@/stores/dirtyFiles'
 import { useUiStore } from '@/stores/ui'
 import { filePanelId, isFilePanel } from './filePanels'
 import { isMobileNow } from './useIsMobile'
@@ -135,6 +136,20 @@ export async function closeSessionPanel(projectId: string, sessionId: string): P
     return
   apis.get(projectId)?.getPanel(sessionId)?.api.close()
   await window.clawos.invoke('session:stop', sessionId)
+}
+
+/** ⌘W numa aba de arquivo: fecha a aba. Retorna false se o painel ativo não for arquivo. */
+export function closeActiveFilePanel(projectId: string): boolean {
+  const panel = apis.get(projectId)?.activePanel
+  if (!panel || !isFilePanel(panel.id)) return false
+  const path = (panel.params as { path?: string } | undefined)?.path ?? ''
+  if (
+    useDirtyFiles.getState().dirty[path] &&
+    !confirm('Este arquivo tem alterações não salvas. Fechar mesmo assim?')
+  )
+    return true
+  panel.api.close()
+  return true
 }
 
 /** Remove o painel de uma sessão apagada, se estiver aberto. */
