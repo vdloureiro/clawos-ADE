@@ -6,6 +6,7 @@ import type {
   SessionInfo,
   SessionStatus,
   ToolCallView,
+  SlashCommand,
 } from './types'
 
 export type ChatItem =
@@ -32,6 +33,8 @@ export interface ChatState {
   items: ChatItem[]
   /** Modelo, modo de permissão etc. que o agente aceita nesta sessão. */
   configOptions?: SessionConfigOption[]
+  /** Comandos de barra que o agente oferece (menu do "/"). */
+  commands?: SlashCommand[]
 }
 
 let counter = 0
@@ -49,6 +52,8 @@ export function applyEvent(state: ChatState, event: SessionEvent): ChatState {
 
     case 'config_options':
       return { ...state, configOptions: event.options }
+    case 'commands':
+      return { ...state, commands: event.commands }
 
     case 'user_message': {
       const next = appendText(state, 'user', event.id, event.text)

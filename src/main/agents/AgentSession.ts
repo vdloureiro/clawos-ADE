@@ -332,8 +332,9 @@ export class AgentSession {
     this.connection = acp
       .client({ name: 'clawos' })
       .onNotification(acp.methods.client.session.update, (ctx) => {
-        if (this.replaying) return
         const { update } = ctx.params
+        // Ao retomar, o histórico reenviado é descartado, mas a lista de comandos não.
+        if (this.replaying && update.sessionUpdate !== 'available_commands_update') return
         // O agente pode mudar de modo sozinho (ex.: o Claude sai do modo plano).
         if (update.sessionUpdate === 'current_mode_update') {
           this.configOptions = this.configOptions.map((o) =>

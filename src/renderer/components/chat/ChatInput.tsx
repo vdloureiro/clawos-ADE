@@ -8,12 +8,13 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ArrowUp, AtSign, FileText, ImageIcon, Paperclip, Square, X } from 'lucide-react'
-import type { SessionConfigOption } from '@shared/types'
+import type { SessionConfigOption, SlashCommand } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { isRemote, pickFiles as pickSystemFiles, uploadFiles } from '@/lib/platform'
 import { ConfigPickers } from './ConfigPickers'
 import { filterFiles, mentionAt, type Mention } from './mentions'
+import { commandText, filterCommands, slashQuery, type MenuCommand } from './slashCommands'
 import { VoiceButton } from './VoiceButton'
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp)$/i
@@ -34,6 +35,8 @@ export function ChatInput({
   onConfigChange,
   onSend,
   onStop,
+  commands = [],
+  onClawosCommand,
 }: {
   disabled: boolean
   /** Sessão em erro ou encerrada (e não apenas conectando). */
@@ -46,6 +49,10 @@ export function ChatInput({
   onConfigChange?: (configId: string, value: string) => Promise<void>
   onSend: (payload: SendPayload) => void
   onStop: () => void
+  /** Comandos de barra que o agente oferece (menu do "/"). */
+  commands?: SlashCommand[]
+  /** Comando que o Clawos atende sozinho (ex.: `/mcp`). */
+  onClawosCommand?: (name: string) => void
 }) {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<string[]>([])
@@ -143,6 +150,29 @@ export function ChatInput({
     [mention, files],
   )
 
+  // Menu do "/": aparece enquanto se digita o nome do comando, no início da mensagem.
+  const [slashClosed, setSlashClosed] = useState(false)
+  const query = slashClosed ? null : slashQuery(text)
+  const slashItems = useMemo(
+    () => (query === null ? [] : filterCommands(commands, query)),
+    [commands, query],
+  )
+
+  const pickCommand = (command: MenuCommand) => {
+    if (command.clawos) {
+      setText('')
+      onClawosCommand?.(command.name)
+      return
+    }
+    setText(`${commandText(command)} `)
+    requestAnimationFrame(() => {
+      const el = ref.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    })
+  }
+
   const updateMention = (value: string, caret: number) => {
     const found = mentionAt(value, caret)
     setMention(found)
@@ -168,6 +198,12 @@ export function ChatInput({
 
   const send = () => {
     const value = text.trim()
+    // "/mcp" sozinho abre a tela do Clawos; "/mcp reconnect x" etc. vão para o agente.
+    if (value === '/mcp' && onClawosCommand) {
+      setText('')
+      onClawosCommand('mcp')
+      return
+    }
     if ((!value && attachments.length === 0) || disabled || working) return
     onSend({ text: value || 'Veja os arquivos anexados.', attachments })
     setText('')
@@ -177,6 +213,24 @@ export function ChatInput({
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashItems.length > 0) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const delta = e.key === 'ArrowDown' ? 1 : -1
+        setSelected((i) => (i + delta + slashItems.length) % slashItems.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        pickCommand(slashItems[Math.min(selected, slashItems.length - 1)]!)
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSlashClosed(true)
+        return
+      }
+    }
     if (mention && suggestions.length > 0) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
@@ -225,6 +279,45 @@ export function ChatInput({
           <button type="button" onClick={() => setError(null)} title="Fechar">
             <X className="size-3" />
           </button>
+        </div>
+      )}
+      {slashItems.length > 0 && (
+        <div className="absolute right-3 bottom-full left-3 z-20 mb-1 max-h-72 overflow-y-auto rounded-md border bg-popover p-1 shadow-lg">
+          <div className="px-2 pt-1 pb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+            Comandos
+          </div>
+          {slashItems.map((command, index) => (
+            <button
+              key={command.name}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                pickCommand(command)
+              }}
+              onMouseEnter={() => setSelected(index)}
+              className={cn(
+                'flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-xs',
+                index === Math.min(selected, slashItems.length - 1)
+                  ? 'bg-accent'
+                  : 'hover:bg-accent/50',
+              )}
+            >
+              <span className="shrink-0 font-mono font-medium">{commandText(command)}</span>
+              {command.hint && (
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  {command.hint}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {command.description}
+              </span>
+              {command.clawos && (
+                <span className="shrink-0 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                  Clawos
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       )}
       {mention && suggestions.length > 0 && (
@@ -298,6 +391,8 @@ export function ChatInput({
           value={text}
           onChange={(e) => {
             setText(e.target.value)
+            setSlashClosed(false)
+            if (slashQuery(e.target.value) !== null && slashQuery(text) === null) setSelected(0)
             updateMention(e.target.value, e.target.selectionStart)
           }}
           onKeyDown={onKeyDown}

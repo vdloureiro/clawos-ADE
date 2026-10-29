@@ -24,6 +24,7 @@ import { SkillCatalogGrid } from '@/components/skills/SkillCatalogGrid'
 import { cachedMcpStatus, mcpStatusOnOpen, storeMcpStatus } from '@/lib/mcpStatusCache'
 import { cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projects'
+import { useUiStore } from '@/stores/ui'
 
 type Tab = 'geral' | 'mcps' | 'skills' | 'segredos'
 
@@ -43,7 +44,7 @@ export function ProjectSettings({
   onClose: () => void
 }) {
   const project = useProjectsStore((s) => s.projects.find((p) => p.id === projectId))
-  const [tab, setTab] = useState<Tab>('geral')
+  const [tab, setTab] = useState<Tab>(() => useUiStore.getState().settingsTab)
   const [loaded, setLoaded] = useState<ProjectConfigResult | null>(null)
   const [draft, setDraft] = useState<ProjectConfig>({})
   const [secrets, setSecrets] = useState<string[]>([])

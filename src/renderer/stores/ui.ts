@@ -9,6 +9,8 @@ interface UiState {
   setView: (view: MainView) => void
   paletteOpen: boolean
   settingsProjectId: string | null
+  /** Aba em que as configurações do projeto abrem (padrão: Geral). */
+  settingsTab: 'geral' | 'mcps' | 'skills' | 'segredos'
   globalSettingsOpen: boolean
   newProjectOpen: boolean
   /** Assistente de primeiro acesso (instalar agentes, entrar, criar projeto). */
@@ -18,7 +20,10 @@ interface UiState {
   setMobileFile: (file: { path: string; line?: number; nonce: number } | null) => void
   setOnboardingOpen: (open: boolean) => void
   setPaletteOpen: (open: boolean) => void
-  openProjectSettings: (projectId: string | null) => void
+  openProjectSettings: (
+    projectId: string | null,
+    tab?: 'geral' | 'mcps' | 'skills' | 'segredos',
+  ) => void
   setGlobalSettingsOpen: (open: boolean) => void
   setNewProjectOpen: (open: boolean) => void
   /** Terminal integrado aberto, por projeto (como o painel de terminal do VS Code). */
@@ -31,6 +36,7 @@ export const useUiStore = create<UiState>((set) => ({
   setView: (view) => set({ view }),
   paletteOpen: false,
   settingsProjectId: null,
+  settingsTab: 'geral',
   globalSettingsOpen: false,
   newProjectOpen: false,
   onboardingOpen: false,
@@ -38,7 +44,8 @@ export const useUiStore = create<UiState>((set) => ({
   setMobileFile: (mobileFile) => set({ mobileFile }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
-  openProjectSettings: (settingsProjectId) => set({ settingsProjectId }),
+  openProjectSettings: (settingsProjectId, settingsTab = 'geral') =>
+    set({ settingsProjectId, settingsTab }),
   setGlobalSettingsOpen: (globalSettingsOpen) => set({ globalSettingsOpen }),
   setNewProjectOpen: (newProjectOpen) => set({ newProjectOpen }),
   terminalOpen: {},

@@ -12,6 +12,7 @@ import { useUiStore } from '@/stores/ui'
 import { ChatInput, type SendPayload } from './ChatInput'
 import { organizeTasksPrompt, turnEnds } from '@/lib/chatTurns'
 import { Markdown } from './Markdown'
+import { McpSessionDialog } from './McpSessionDialog'
 import { MessageActions, PinnedBanner } from './MessageActions'
 import { PermissionCard } from './PermissionCard'
 import { PlanView } from './PlanView'
@@ -38,6 +39,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   )
   const branch = summary?.mode === 'worktree' ? null : summary?.branch
   const [editingTitle, setEditingTitle] = useState(false)
+  const [mcpOpen, setMcpOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
 
@@ -244,7 +246,18 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           }}
           onSend={send}
           onStop={stop}
+          commands={chat.commands}
+          onClawosCommand={(name) => name === 'mcp' && setMcpOpen(true)}
         />
+        {mcpOpen && (
+          <McpSessionDialog
+            projectId={info.projectId}
+            agentId={info.agentId}
+            onSendToAgent={(text) => send({ text, attachments: [] })}
+            onRestart={() => void restart(sessionId)}
+            onClose={() => setMcpOpen(false)}
+          />
+        )}
       </div>
     </FileLinkProvider>
   )

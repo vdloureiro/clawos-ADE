@@ -117,7 +117,17 @@ export type SessionEvent =
   /** Aviso informativo (ex.: limitações de configuração deste agente). */
   | { type: 'notice'; text: string }
   | { type: 'config_options'; options: SessionConfigOption[] }
+  /** Comandos de barra (/compact, /mcp…) que o agente oferece nesta sessão. */
+  | { type: 'commands'; commands: SlashCommand[] }
   | { type: 'error'; message: string }
+
+/** Comando de barra anunciado pelo agente (`available_commands_update` do ACP). */
+export interface SlashCommand {
+  name: string
+  description: string
+  /** Dica do argumento, ex.: "[reconnect|enable|disable <servidor>]". */
+  hint?: string
+}
 
 export interface SessionInfo {
   id: string

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- **Comandos com "/" no chat, como no VS Code**: ao digitar "/", aparece o menu com todos os comandos que o agente oferece nesta conversa (no Claude: /compact, /review, /init, skills…; no Codex: /plan, /review, /status, skills $…), com busca e navegação pelas setas. Enter ou Tab escolhe.
+- **/mcp**: abre o painel "MCPs desta conversa", com o status de cada MCP, o botão "Fazer login" para os que entram pelo navegador, "Reconectar" (no Claude o próprio agente reconecta, sem perder o histórico; no Codex o agente reinicia) e o atalho para adicionar ou configurar MCPs. No Claude, "Ver status pelo Claude" mostra o status real da sessão.
+
 ## 0.7.1
 
 - **"spawn … ENOENT / ACP connection closed" depois de reiniciar o computador**: logo após o login, pastas na Mesa sincronizada com o iCloud podem demorar alguns segundos para ficar disponíveis, e as conversas reabertas falhavam. Agora o Clawos espera a pasta (até 30 s) antes de iniciar o agente; se a pasta realmente não existir, a mensagem diz qual é ("A pasta desta conversa não foi encontrada: …").

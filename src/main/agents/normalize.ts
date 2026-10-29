@@ -79,6 +79,17 @@ export function normalizeUpdate(update: SessionUpdate): SessionEvent[] {
         ? [{ type: 'error', message: text }]
         : [{ type: 'notice', text }]
     }
+    case 'available_commands_update':
+      return [
+        {
+          type: 'commands',
+          commands: update.availableCommands.map((c) => ({
+            name: c.name,
+            description: c.description,
+            ...(c.input && 'hint' in c.input && c.input.hint ? { hint: c.input.hint } : {}),
+          })),
+        },
+      ]
     case 'config_option_update':
       return [{ type: 'config_options', options: normalizeConfigOptions(update.configOptions) }]
     default:
