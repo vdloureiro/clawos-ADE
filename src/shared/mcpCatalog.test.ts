@@ -116,6 +116,17 @@ describe('Meta Ads', () => {
     )
   })
 
+  it('PostHog e Resend entram pelo mcp-remote (login no navegador)', () => {
+    for (const [id, url] of [
+      ['posthog', 'https://mcp.posthog.com/mcp'],
+      ['resend', 'https://mcp.resend.com/mcp'],
+    ] as const)
+      expect(buildCatalogEntry(catalogEntry(id)!, {}).server).toEqual({
+        command: 'npx',
+        args: ['-y', 'mcp-remote@latest', url],
+      })
+  })
+
   it('Railway entra pelo mcp-remote (login no navegador)', () => {
     expect(buildCatalogEntry(catalogEntry('railway')!, {}).server).toEqual({
       command: 'npx',

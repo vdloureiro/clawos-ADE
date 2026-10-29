@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1
+
+- **PostHog** e **Resend** no catálogo de MCPs (servidores oficiais), nos projetos e em "MCPs em todos os projetos". PostHog: analytics, funis, feature flags, gravações de sessão, erros e SQL. Resend: enviar e-mails, domínios, contatos, audiências e broadcasts. Os dois conectam com login na sua conta pelo navegador.
+
 ## 0.8.0
 
 - **Comandos com "/" no chat, como no VS Code**: ao digitar "/", aparece o menu com todos os comandos que o agente oferece nesta conversa (no Claude: /compact, /review, /init, skills…; no Codex: /plan, /review, /status, skills $…), com busca e navegação pelas setas. Enter ou Tab escolhe.

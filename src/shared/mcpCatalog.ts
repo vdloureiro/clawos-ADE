@@ -148,6 +148,26 @@ const EXTRA: CatalogEntry[] = [
     },
   },
   {
+    id: 'posthog',
+    name: 'PostHog',
+    auth: 'oauth',
+    description:
+      'Analytics, funis, feature flags, gravações de sessão, erros e consultas SQL do PostHog (servidor oficial). Login com a sua conta.',
+    docsUrl: 'https://posthog.com/docs/model-context-protocol',
+    fields: [],
+    build: () => viaOAuth('https://mcp.posthog.com/mcp'),
+  },
+  {
+    id: 'resend',
+    name: 'Resend',
+    auth: 'oauth',
+    description:
+      'Enviar e-mails, gerenciar domínios, contatos, audiências e broadcasts do Resend (servidor oficial). Login com a sua conta.',
+    docsUrl: 'https://github.com/resend/resend-mcp#remote-mcp-server',
+    fields: [],
+    build: () => viaOAuth('https://mcp.resend.com/mcp'),
+  },
+  {
     id: 'railway',
     name: 'Railway',
     auth: 'oauth',
@@ -404,6 +424,8 @@ const ORDER = [
   'vercel',
   'railway',
   'google-drive',
+  'posthog',
+  'resend',
   'meta-ads',
   'clickup',
   'linear',
